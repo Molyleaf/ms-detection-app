@@ -1,32 +1,34 @@
 <!DOCTYPE html>
-<html lang="en-US">
+<html lang="zh-CN">
 <head>
 	<meta charset="UTF-8">
-	<title>化合物风险分析系统 - MS1 上传</title>
+	<title>化合物风险分析系统</title>
+	<style>
+        body { font-family: sans-serif; max-width: 600px; margin: 50px auto; line-height: 1.6; }
+        .upload-card { border: 1px solid #ccc; padding: 20px; border-radius: 8px; background: #f9f9f9; }
+        .btn { background: #007bff; color: white; padding: 10px 20px; border: none; cursor: pointer; }
+	</style>
 </head>
 <body>
-<h1>第一步：上传一级质谱数据 (MS1)</h1>
-<p>支持格式：.xlsx (需包含 Mass, Intensity 列) 或 .csv</p>
+<h1>化合物风险分析系统</h1>
+<div class="upload-card">
+	<h3>第一步：上传一级质谱数据 (MS1)</h3>
+	<p>请上传质谱原始结果文件。系统将自动解析 <strong>Mass</strong> 和 <strong>Intensity</strong> 列。</p>
 
-<form action="/upload_ms1" method="post" enctype="multipart/form-data">
-	<div>
-		<label>选择文件：</label>
-		<input type="file" name="file" required>
-	</div>
-	<br>
-	<div>
-		<label>检测模式：</label>
-		<label>
-			<input type="radio" name="mode" value="positive" checked>
-			正离子 (Positive)
-		</label>
-		<label>
-			<input type="radio" name="mode" value="negative">
-			负离子 (Negative)
-		</label>
-	</div>
-	<br>
-	<button type="submit">开始初步筛选</button>
-</form>
+	<form action="/upload_ms1" method="post" enctype="multipart/form-data">
+		<div style="margin-bottom: 15px;">
+			<label>选择文件 (.xlsx, .xls, .csv)：</label><br>
+			<input type="file" name="file" accept=".xlsx, .xls, .csv" required>
+		</div>
+
+		<div style="margin-bottom: 15px;">
+			<label>检测模式：</label><br>
+			<input type="radio" name="mode" value="positive" checked> 正离子 (Positive)
+			<input type="radio" name="mode" value="negative"> 负离子 (Negative)
+		</div>
+
+		<button type="submit" class="btn">开始自动化解析与筛选</button>
+	</form>
+</div>
 </body>
 </html>
