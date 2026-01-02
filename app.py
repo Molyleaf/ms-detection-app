@@ -1,115 +1,118 @@
 import os
 import logging
 import pandas as pd
-from flask import Flask, render_template, request, redirect, url_for, flash
+import numpy as np
+from flask import Flask, render_template, request, jsonify
 from werkzeug.utils import secure_filename
 
-# 导入自定义核心模块
-from core.pipeline import get_preprocessing_pipeline
+# 核心模块导入
+from core.pipeline import get_ms1_pipeline
 from core.matcher import RiskMatcher, SpectrumMatcher
 from core.classifier import MS2Classifier
 
-# 配置日志
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[logging.StreamHandler()]
-)
+# 日志配置
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
-app.secret_key = "ms_analysis_secret"
 app.config['UPLOAD_FOLDER'] = '/tmp'
-app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 限制 16MB
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 
-# 初始化全局组件
-# 注意：在 Docker 中路径需对应
-PREPRO_PIPELINE = get_preprocessing_pipeline()
+# 初始化全局组件 (路径对应 Docker 容器内路径)
+MS1_PIPELINE = get_ms1_pipeline()
 RISK_MATCHER = RiskMatcher('data_processed/risk_db.joblib')
 SPEC_MATCHER = SpectrumMatcher('data_processed/spectrum_db.joblib')
-CLASSIFIER = MS2Classifier('models/251229.h5')
+CLASSIFIER = MS2Classifier('models/251229.h5', 'data_processed/stats.joblib')
 
 @app.route('/')
 def index():
-    """第一步：上传一级质谱页面"""
+    """主页：提供 MS1 文件上传"""
     return render_template('index.html')
 
 @app.route('/upload_ms1', methods=['POST'])
 def upload_ms1():
-    """处理一级质谱并识别危险峰"""
-    if 'file' not in request.files:
-        return redirect(request.url)
-
-    file = request.files['file']
+    """处理 MS1 数据上传与风险初步筛选"""
+    file = request.files.get('file')
     mode = request.form.get('mode', 'positive')
 
-    if file.filename == '':
-        return redirect(request.url)
+    if not file:
+        return "请选择文件", 400
 
-    if file:
-        filename = secure_filename(file.filename)
-        file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-        file.save(file_path)
+    filename = secure_filename(file.filename)
+    filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+    file.save(filepath)
 
-        logger.info(f"收到一级质谱上传: {filename}, 模式: {mode}")
+    try:
+        # 1. 加载数据 (支持 xlsx/csv)
+        if filename.endswith('.xlsx'):
+            # 默认读取第一个 Sheet
+            df = pd.read_excel(filepath)
+        else:
+            df = pd.read_csv(filepath)
 
-        try:
-            # 1. 读取原始数据
-            raw_df = pd.read_excel(file_path)
+        # 校验列名 (Mass, Intensity)
+        if 'Mass' not in df.columns or 'Intensity' not in df.columns:
+            return "文件必须包含 'Mass' 和 'Intensity' 列", 400
 
-            # 2. 运行预处理管线 (同位素清理、归一化等)
-            df_clean = PREPRO_PIPELINE.fit_transform(raw_df)
+        # 2. 运行预处理流水线 (清理同位素、归一化等)
+        df_clean = MS1_PIPELINE.transform(df)
 
-            # 3. 风险库匹配
-            match_df = RISK_MATCHER.match_ms1_peaks(df_clean, mode=mode)
+        # 3. 风险库匹配
+        results = RISK_MATCHER.match_ms1_peaks(df_clean, mode=mode)
 
-            if match_df.empty:
-                return render_template('ms1_results.html', peaks=[], message="未发现已知风险峰。")
+        # 4. 转换结果为字典供前端渲染
+        peaks = results.to_dict(orient='records')
+        return render_template('results_ms1.html', peaks=peaks, mode=mode)
 
-            peaks = match_df.to_dict(orient='records')
-            return render_template('ms1_results.html', peaks=peaks, mode=mode)
-
-        except Exception as e:
-            logger.error(f"处理一级质谱出错: {e}")
-            return f"文件处理失败: {str(e)}", 500
+    except Exception as e:
+        logger.error(f"MS1 处理出错: {e}")
+        return f"处理失败: {str(e)}", 500
 
 @app.route('/analyze_ms2', methods=['POST'])
 def analyze_ms2():
-    """第二步：对特定危险峰进行二级质谱模型分析"""
-    target_mz = request.form.get('mz')
-    ms2_content = request.form.get('ms2_data') # 接收文本域输入的质谱数据
-    mode = request.form.get('mode')
+    """接收 MS2 字符串输入并运行注意力模型"""
+    ms2_data = request.form.get('ms2_data')
+    parent_mz = float(request.form.get('parent_mz', 0))
+    risk_level = request.form.get('risk_level', 'Safe')
+    matched_mass = float(request.form.get('matched_mass', 0))
 
-    if not ms2_content:
-        return "请输入二级质谱数据", 400
+    if not ms2_data:
+        return jsonify({'error': '无数据'}), 400
 
-    logger.info(f"开始分析 m/z {target_mz} 的二级质谱")
+    # 1. 尝试触发 Risk0 快速旁路逻辑
+    # 如果 MS1 已发现 Risk0 物质且母离子精确匹配，直接判定
+    is_risk0_positive = CLASSIFIER.check_risk0_bypass(risk_level, parent_mz, matched_mass)
 
-    # 1. 模型预测 (注意力机制)
-    # 将输入封装成列表，classifier 内部会调用 pipeline 进行特征提取
-    probs, preds = CLASSIFIER.predict([ms2_content])
+    if is_risk0_positive:
+        prob, pred = 1.0, 1
+    else:
+        # 2. 正常注意力模型预测
+        probs, preds = CLASSIFIER.predict([ms2_data])
+        prob, pred = probs[0], preds[0]
 
-    prob = probs[0]
-    is_positive = preds[0] == 1
-    risk_text, risk_level = CLASSIFIER.get_risk_label(prob)
+    risk_text, risk_class = CLASSIFIER.get_risk_label(prob)
 
-    # 2. 如果是阳性，进行谱图库回溯匹配
-    identifications = []
-    if is_positive:
-        # 解析当前输入以便匹配
-        from core.pipeline import MS2FeatureExtractor
-        # 这里复用解析逻辑
-        parsed_spec = CLASSIFIER.extractor._parse_single_spec(ms2_content)
-        query_spec = {'mz': parsed_spec[:, 0], 'intensities': parsed_spec[:, 1]}
-        identifications = SPEC_MATCHER.search_library(query_spec)
+    # 3. 如果判定为阳性 (pred == 1)，进行库回溯
+    library_matches = []
+    if pred == 1:
+        # 解析输入字符串为 Matcher 需要的格式
+        try:
+            peaks = [p.split(':') for p in ms2_data.replace(';', ',').split(',') if ':' in p]
+            spec_obj = {
+                'mz': np.array([float(p[0]) for p in peaks]),
+                'intensities': np.array([float(p[1]) for p in peaks])
+            }
+            library_matches = SPEC_MATCHER.match(spec_obj)
+        except:
+            pass
 
-    return render_template('final_results.html',
-                           mz=target_mz,
-                           prob=f"{prob:.2%}",
+    return render_template('results_ms2.html',
+                           prob=round(prob*100, 2),
                            risk_text=risk_text,
-                           risk_level=risk_level,
-                           identifications=identifications)
+                           risk_class=risk_class,
+                           matches=library_matches,
+                           parent_mz=parent_mz)
 
 if __name__ == '__main__':
-    # Docker 容器内运行必须监听 0.0.0.0
-    app.run(host='0.0.0.0', port=5000, debug=False)
+    # 容器内运行建议监听 0.0.0.0
+    app.run(host='0.0.0.0', port=5000)

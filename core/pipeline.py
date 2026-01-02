@@ -7,30 +7,37 @@ from sklearn.pipeline import Pipeline
 
 logger = logging.getLogger(__name__)
 
-# --- 常量定义 (对齐 Notebook) ---
+# --- 常量定义 (严格对齐 训练.ipynb) ---
+# 那非类化合物特征峰
 CHARACTERISTIC_PEAKS = [
-    58.0651, 72.0808, 84.0808, 99.0917, 113.1073, 135.0441, 147.0077, 151.0866,
-    166.0975, 169.076, 197.0709, 250.0863, 256.0955, 262.0862, 283.1195,
-    297.1346, 299.1139, 302.0812, 312.1581, 315.091, 327.1274, 341.1608,
-    354.2, 377.1, 396.203
+    58.0651, 72.0808, 84.0808, 99.0917, 113.1073,
+    135.0441, 147.0077, 151.0866, 166.0975, 169.076,
+    197.0709, 250.0863, 256.0955, 262.0862, 283.1195,
+    297.1346, 299.1139, 302.0812, 312.1581, 315.091,
+    327.1274, 341.1608, 354.2, 377.1, 396.203
 ]
+
+# 关键特征峰
 KEY_PEAKS = [58.0651, 72.0808, 135.0441, 166.0975, 250.0863]
-MASS_REGIONS = {
-    'low_mass': (CHARACTERISTIC_PEAKS[:7], 0.25),
-    'middle_mass': (CHARACTERISTIC_PEAKS[7:12], 0.5),
-    'high_mass': (CHARACTERISTIC_PEAKS[12:18], 0.75),
-    'very_high_mass': (CHARACTERISTIC_PEAKS[18:], 1.0)
+
+# 质量区域特征映射
+PEAK_GROUPS = {
+    'low_mass': ([58.0651, 72.0808, 84.0808, 99.0917, 113.1073], 0.25),
+    'middle_mass': ([135.0441, 147.0077, 151.0866, 166.0975, 169.076, 197.0709], 0.5),
+    'high_mass': ([250.0863, 256.0955, 262.0862, 283.1195, 297.1346, 299.1139, 302.0812], 0.75),
+    'very_high_mass': ([312.1581, 315.091, 327.1274, 341.1608, 354.2, 377.1, 396.203], 1.0)
 }
 
 class MSIsotopeCleaner(BaseEstimator, TransformerMixin):
-    """一级质谱同位素清理：对齐 Notebook 的 while 循环分组逻辑"""
+    """一级质谱同位素清理：在 2Da 范围内只保留最强的峰"""
     def __init__(self, tolerance=2.0):
         self.tolerance = tolerance
 
     def fit(self, X, y=None): return self
 
     def transform(self, X):
-        if X.empty: return X
+        if X is None or X.empty: return X
+        # 确保按质量排序
         df = X.sort_values('Mass').reset_index(drop=True)
         masses = df['Mass'].values
         intensities = df['Intensity'].values
@@ -39,25 +46,26 @@ class MSIsotopeCleaner(BaseEstimator, TransformerMixin):
         i = 0
         while i < len(masses):
             j = i + 1
-            # 找到 tolerance 范围内的所有峰
+            # 找到 tolerance 范围内的所有峰组
             while j < len(masses) and masses[j] - masses[i] <= self.tolerance:
                 j += 1
             if j - i > 1:
-                # 仅保留该组内强度最大的索引
-                max_idx = i + np.argmax(intensities[i:j])
+                # 仅保留该组内强度最大的峰
+                max_idx_in_group = i + np.argmax(intensities[i:j])
                 for k in range(i, j):
-                    if k != max_idx: keep[k] = False
+                    if k != max_idx_in_group:
+                        keep[k] = False
             i = j
-        logger.info(f"IsotopeCleaner: 移除了 {len(df) - keep.sum()} 个同位素峰")
         return df[keep].copy()
 
 class MSIntensityScaler(BaseEstimator, TransformerMixin):
-    """归一化到 0-100"""
+    """将 Intensity 归一化到 0-100"""
     def fit(self, X, y=None): return self
     def transform(self, X):
-        if X.empty: return X
+        if X is None or X.empty: return X
         X = X.copy()
-        max_v, min_v = X['Intensity'].max(), X['Intensity'].min()
+        max_v = X['Intensity'].max()
+        min_v = X['Intensity'].min()
         if max_v > min_v:
             X['Intensity'] = 100 * (X['Intensity'] - min_v) / (max_v - min_v)
         else:
@@ -65,90 +73,118 @@ class MSIntensityScaler(BaseEstimator, TransformerMixin):
         return X
 
 class MS2GraphExtractor(BaseEstimator, TransformerMixin):
-    """二级质谱图特征提取：对齐 SimplifiedAttentionClassifier"""
-    def __init__(self, max_nodes=10, stats_path=None):
+    """
+    二级质谱图特征提取器：
+    1. 提取 10 维节点特征向量
+    2. 基于 m/z 差异构建高斯核邻接矩阵
+    """
+    def __init__(self, max_nodes=10, node_dim=10, stats_path='data_processed/stats.joblib'):
         self.max_nodes = max_nodes
-        # 从 joblib 读取训练集全局统计变量，若无则从环境变量读取默认值
-        if stats_path and os.path.exists(stats_path):
+        self.node_dim = node_dim
+        # 加载 convert.py 生成的全局统计量
+        if os.path.exists(stats_path):
             self.stats = joblib.load(stats_path)
+            logger.info(f"成功加载统计量: {self.stats}")
         else:
-            self.stats = {
-                'mz_mean': float(os.getenv('MZ_MEAN', 0)),
-                'mz_std': float(os.getenv('MZ_STD', 1)),
-                'max_mz_mean': float(os.getenv('MAX_MZ_MEAN', 0)),
-                'max_mz_std': float(os.getenv('MAX_MZ_STD', 1))
-            }
+            logger.warning(f"统计文件 {stats_path} 不存在，使用默认值。")
+            self.stats = {'mz_mean': 0, 'mz_std': 1, 'max_mz_mean': 0, 'max_mz_std': 1}
 
     def fit(self, X, y=None): return self
 
-    def _extract_one(self, ms_str):
-        # 解析 mass:intensity 格式
+    def _extract_single(self, ms_str):
+        """解析单条 MS2 字符串并生成特征矩阵和邻接矩阵"""
+        # 1. 解析字符串 (支持逗号或分号分隔)
         peaks = []
         for p in str(ms_str).replace(';', ',').split(','):
             try:
                 parts = p.split(':')
-                m = float(parts[0])
-                i = float(parts[1]) if len(parts)>1 else 1.0
+                m = float(parts[0].strip())
+                i = float(parts[1].strip()) if len(parts) > 1 else 1.0
                 peaks.append((m, i))
             except: continue
 
-        # 按强度降序取 Top N
+        if not peaks:
+            return np.zeros((self.max_nodes, self.node_dim)), np.eye(self.max_nodes)
+
+        # 2. 按强度降序排列并截取前 N 个
         peaks.sort(key=lambda x: x[1], reverse=True)
+        max_intensity_mz = peaks[0][0] # 强度最大的峰的 m/z
         top_peaks = peaks[:self.max_nodes]
-        if not top_peaks: return np.zeros((self.max_nodes, 10)), np.eye(self.max_nodes)
 
-        max_mz = top_peaks[0][0] # 降序后第一个是最大强度峰
-        mz_vals = [p[0] for p in top_peaks]
+        # 填充逻辑：如果峰不够，用最后一个峰填充
+        if len(top_peaks) < self.max_nodes:
+            last_peak = top_peaks[-1]
+            while len(top_peaks) < self.max_nodes:
+                top_peaks.append(last_peak)
 
-        # 1. 构造 10 维节点特征
-        node_features = np.zeros((self.max_nodes, 10))
-        for i in range(self.max_nodes):
-            if i < len(top_peaks):
-                m, _ = top_peaks[i]
-                node_features[i, 0] = (m - self.stats['mz_mean']) / self.stats['mz_std'] # mz_norm
-                node_features[i, 1] = i / max(len(top_peaks), 1) # position_ratio
-                node_features[i, 2] = 1.0 if i == 0 else 0.0 # is_first
-                node_features[i, 3] = 1.0 if i == len(top_peaks)-1 else 0.0 # is_last
+        actual_len = len(peaks[:self.max_nodes])
+        mz_values = [p[0] for p in top_peaks]
 
-                # 那非匹配 (一位小数)
-                rm = round(m, 1)
-                node_features[i, 4] = 1.0 if any(round(cp, 1) == rm for cp in CHARACTERISTIC_PEAKS) else 0.0
-                node_features[i, 5] = min([abs(m - cp) for cp in CHARACTERISTIC_PEAKS]) / 100.0
+        # 3. 构建 10 维节点特征向量
+        node_features = np.zeros((self.max_nodes, self.node_dim))
+        rounded_char = [round(p, 1) for p in CHARACTERISTIC_PEAKS]
+        rounded_key = [round(p, 1) for p in KEY_PEAKS]
 
-                # 区域特征
-                for _, (p_list, val) in MASS_REGIONS.items():
-                    if any(round(p, 1) == rm for p in p_list):
-                        node_features[i, 6] = val; break
+        for j in range(self.max_nodes):
+            mz, _ = top_peaks[j]
+            rmz = round(mz, 1)
 
-                node_features[i, 7] = 1.0 if any(round(kp, 1) == rm for kp in KEY_PEAKS) else 0.0
-                node_features[i, 8] = (max_mz - self.stats['max_mz_mean']) / self.stats['max_mz_std']
-                node_features[i, 9] = m / (max_mz + 1e-6)
+            # F0: 标准化 m/z
+            node_features[j, 0] = (mz - self.stats['mz_mean']) / self.stats['mz_std']
+            # F1: 位置比例
+            node_features[j, 1] = j / max(actual_len, 1)
+            # F2: 是否强度最大的峰
+            node_features[j, 2] = 1.0 if j == 0 else 0.0
+            # F3: 是否强度最小的峰
+            node_features[j, 3] = 1.0 if j == (actual_len - 1) else 0.0
+            # F4: 是否那非特征峰 (小数点后1位匹配)
+            node_features[j, 4] = 1.0 if rmz in rounded_char else 0.0
+            # F5: 与最近特征峰的 m/z 差异
+            node_features[j, 5] = min([abs(mz - cp) for cp in CHARACTERISTIC_PEAKS]) / 100.0
+            # F6: 质量区域特征 (小数点后1位匹配)
+            region_val = 0.0
+            for _, (group_peaks, val) in PEAK_GROUPS.items():
+                if any(round(gp, 1) == rmz for gp in group_peaks):
+                    region_val = val
+                    break
+            node_features[j, 6] = region_val
+            # F7: 是否关键峰
+            node_features[j, 7] = 1.0 if rmz in rounded_key else 0.0
+            # F8: 最大强度 m/z 标准化
+            node_features[j, 8] = (max_intensity_mz - self.stats['max_mz_mean']) / self.stats['max_mz_std']
+            # F9: 当前 m/z 与最大强度 m/z 的比值
+            node_features[j, 9] = mz / (max_intensity_mz + 1e-6)
 
-        # 2. 构造邻接矩阵 (高斯核)
+        # 4. 构建邻接矩阵 (高斯核，sigma=50.0)
         adj = np.eye(self.max_nodes)
-        for r in range(len(mz_vals)):
-            for c in range(len(mz_vals)):
+        for r in range(self.max_nodes):
+            for c in range(self.max_nodes):
                 if r != c:
-                    diff = abs(mz_vals[r] - mz_vals[c])
+                    diff = abs(mz_values[r] - mz_values[c])
                     adj[r, c] = np.exp(-(diff**2) / (2 * (50.0**2)))
 
         return node_features, adj
 
     def transform(self, X):
-        """X 为包含 MS2 字符串的列表，返回 [Nodes_Batch, Adj_Batch]"""
-        results = [self._extract_one(s) for s in X]
+        """输入 MS2 字符串列表，返回两个张量：节点特征批次和邻接矩阵批次"""
+        results = [self._extract_single(s) for s in X]
         nodes = np.array([r[0] for r in results])
         adjs = np.array([r[1] for r in results])
         return [nodes, adjs]
 
 def get_ms1_pipeline():
+    """一级质谱预处理流水线"""
     return Pipeline([
         ('cleaner', MSIsotopeCleaner(tolerance=2.0)),
         ('scaler', MSIntensityScaler()),
-        ('filter', LowIntensityFilter(threshold=1.0)) # 之前定义的简单过滤
+        ('filter', LowIntensityFilter(threshold=1.0))
     ])
 
 class LowIntensityFilter(BaseEstimator, TransformerMixin):
-    def __init__(self, threshold=1.0): self.threshold = threshold
+    """过滤归一化后强度过低的峰"""
+    def __init__(self, threshold=1.0):
+        self.threshold = threshold
     def fit(self, X, y=None): return self
-    def transform(self, X): return X[X['Intensity'] >= self.threshold].copy()
+    def transform(self, X):
+        if X is None or X.empty: return X
+        return X[X['Intensity'] >= self.threshold].copy()
