@@ -1,23 +1,47 @@
 <!DOCTYPE html>
-<html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>二级质谱深度分析结果</title>
+</head>
 <body>
-<h1>分析结果报告</h1>
-<div style="padding: 20px; border: 2px solid gray;">
-  <p>目标母离子: <b>{{ mz }}</b></p>
-  <p>阳性概率: <b>{{ prob }}</b></p>
-  <p>风险结论: <span style="font-size: 1.2em;">{{ risk_text }}</span></p>
-</div>
+<h1>二级质谱深度分析报告</h1>
+<p>针对母离子 m/z: {{ parent_mz }} 的深度判别。</p>
 
-{% if identifications %}
-<h3>库检索匹配到的潜在化合物 (SMILES):</h3>
+<hr>
+<h3>1. 模型预测结果 (注意力机制)</h3>
 <ul>
-  {% for item in identifications %}
-  <li>{{ item.smiles }} (相似度得分: {{ "%.4f"|format(item.score) }})</li>
-  {% endfor %}
+  <li>判定结果：<strong class="{{ risk_class }}">{{ risk_text }}</strong></li>
+  <li>预测概率：{{ prob }}%</li>
+  <li>特征模型：10 维图卷积注意力模型 (243 轮网格搜索最优版)</li>
 </ul>
+
+<hr>
+<h3>2. 谱图库回溯 (相似度比对)</h3>
+{% if matches %}
+<p>发现与谱图库高度相似的结构：</p>
+<table border="1">
+  <thead>
+  <tr>
+    <th>SMILES 结构</th>
+    <th>余弦相似度</th>
+  </tr>
+  </thead>
+  <tbody>
+  {% for match in matches %}
+  <tr>
+    <td><code>{{ match.smiles }}</code></td>
+    <td>{{ "%.4f"|format(match.score) }}</td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p>未在已知谱图库中发现高相似度匹配（或判定为阴性样本）。</p>
 {% endif %}
 
-<br>
-<a href="/">完成并返回主页</a>
+<hr>
+<a href="/">返回主页</a>
+<button onclick="window.history.back()">返回筛选列表</button>
 </body>
 </html>

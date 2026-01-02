@@ -1,19 +1,32 @@
 <!DOCTYPE html>
-<html>
+<html lang="en-US">
+<head>
+	<meta charset="UTF-8">
+	<title>化合物风险分析系统 - MS1 上传</title>
+</head>
 <body>
-<h1>质谱危险品分析系统 - 步骤 1</h1>
+<h1>第一步：上传一级质谱数据 (MS1)</h1>
+<p>支持格式：.xlsx (需包含 Mass, Intensity 列) 或 .csv</p>
+
 <form action="/upload_ms1" method="post" enctype="multipart/form-data">
-	<p>上传一级质谱 (Excel): <input type="file" name="file"></p>
-	<p>离子模式:
+	<div>
+		<label>选择文件：</label>
+		<input type="file" name="file" required>
+	</div>
+	<br>
+	<div>
+		<label>检测模式：</label>
 		<label>
-			离子模式:
-			<select name="mode">
-				<option value="positive">正离子 (+)</option>
-				<option value="negative">负离子 (-)</option>
-			</select>
+			<input type="radio" name="mode" value="positive" checked>
+			正离子 (Positive)
 		</label>
-	</p>
-	<button type="submit">开始扫描危险峰</button>
+		<label>
+			<input type="radio" name="mode" value="negative">
+			负离子 (Negative)
+		</label>
+	</div>
+	<br>
+	<button type="submit">开始初步筛选</button>
 </form>
 </body>
 </html>

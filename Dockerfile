@@ -1,5 +1,5 @@
 # 使用轻量级 Python 镜像
-FROM python:3.13-slim
+FROM python:3.13-slim-trixie
 
 # 设置工作目录
 WORKDIR /app

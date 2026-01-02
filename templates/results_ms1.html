@@ -1,30 +1,45 @@
 <!DOCTYPE html>
-<html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>一级质谱分析结果</title>
+</head>
 <body>
-<h1>发现危险峰</h1>
-{% if message %}<p>{{ message }}</p>{% endif %}
+<h1>一级质谱筛选结果 (模式: {{ mode }})</h1>
+<p>系统已自动清理同位素峰并归一化强度。</p>
 
 <table border="1">
   <thead>
   <tr>
-    <th>质量数 (m/z)</th>
-    <th>相对强度</th>
+    <th>质量 (Mass)</th>
+    <th>强度 (Intensity)</th>
     <th>风险等级</th>
+    <th>库匹配质量</th>
     <th>操作</th>
   </tr>
   </thead>
   <tbody>
   {% for peak in peaks %}
   <tr>
-    <td>{{ peak.Mass }}</td>
+    <td>{{ "%.4f"|format(peak.Mass) }}</td>
     <td>{{ "%.2f"|format(peak.Intensity) }}</td>
-    <td>{{ peak.Risk }}</td>
+    <td>
+      {% if peak.Risk_Level == 'Safe' %}
+      安全
+      {% else %}
+      <strong>{{ peak.Risk_Level }}</strong>
+      {% endif %}
+    </td>
+    <td>{{ "%.4f"|format(peak.Matched_Mass) if peak.Matched_Mass > 0 else "-" }}</td>
     <td>
       <form action="/analyze_ms2" method="post">
-        <input type="hidden" name="mz" value="{{ peak.Mass }}">
-        <input type="hidden" name="mode" value="{{ mode }}">
-        <textarea name="ms2_data" placeholder="在此粘贴该峰的二级质谱数据 (格式 m/z:int, ...)"></textarea><br>
-        <button type="submit">深度模型判定</button>
+        <input type="hidden" name="parent_mz" value="{{ peak.Mass }}">
+        <input type="hidden" name="risk_level" value="{{ peak.Risk_Level }}">
+        <input type="hidden" name="matched_mass" value="{{ peak.Matched_Mass }}">
+        <label>
+          <textarea name="ms2_data" placeholder="在此粘贴二级质谱数据 (格式 mz:int,mz:int...)" required></textarea>
+        </label>
+        <button type="submit">分析此危险峰 (MS2)</button>
       </form>
     </td>
   </tr>
