@@ -1,93 +1,78 @@
-# MS-Detection-APP
+# 化合物风险分析系统 (Compound Risk Analysis System)
 
+本系统是一个专门用于质谱数据分析的 Web 工具，核心功能是针对**那非类化合物**（Sildenafil-like compounds）进行快速风险筛查与深度识别。系统集成了注意力机制深度学习模型、自动化特征提取流水线以及多级风险数据库匹配逻辑。
 
+## 1. 项目架构
 
-## Getting started
+项目采用模块化设计，确保特征提取、风险匹配与模型推理的解耦：
 
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
-
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
-
-## Add your files
-
-* [Create](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#create-a-file) or [upload](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#upload-a-file) files
-* [Add files using the command line](https://docs.gitlab.com/topics/git/add_files/#add-files-to-a-git-repository) or push an existing Git repository with the following command:
+```text
+ms_project/
+├── app.py                # Flask Web 主应用，负责路由与交互逻辑
+├── convert.py            # 数据预处理脚本，将 Excel/TXT 转换为高性能 joblib 格式
+├── requirements.txt      # Python 依赖列表
+├── Dockerfile            # Docker 容器化构建文件
+├── core/                 # 核心算法模块
+│   ├── pipeline.py       # MS1 同位素清理与 MS2 10维特征提取流水线
+│   ├── matcher.py        # MS1 风险库比对与 MS2 谱图库回溯
+│   └── classifier.py     # 基于 Transformer 注意力机制的 MS2 分类推理
+├── data/                 # 原始数据库文件（需包含 risk_matching-new.xlsx 和 ku.txt）
+├── models/               # 存放预训练模型文件 (如 251229.h5)
+├── data_processed/       # convert.py 生成的二进制中间数据（自动生成）
+└── templates/            # Web 界面 HTML 模板
 
 ```
-cd existing_repo
-git remote add origin https://gitlab.warships.cn/molyleaf/ms-detection-app.git
-git branch -M master
-git push -uf origin master
+
+## 2. 核心技术逻辑
+
+系统遵循“初筛-深挖”的两步走交互流程：
+
+### 第一阶段：一级质谱 (MS1) 初步筛选
+
+* **数据清洗**：自动去除零强度行，并在 2Da 范围内执行同位素峰清理。
+* **风险分级**：将峰值与风险库比对，分为 **Risk0**（精确质量匹配）、**Risk1**（关键化合物）、**Risk2/3**（疑似风险）。
+* **快速通道**：若触发 Risk0 且质量偏差极小，系统可直接判定为阳性。
+
+### 第二阶段：二级质谱 (MS2) 深度判别
+
+* **注意力模型**：使用基于 Transformer 的多头注意力模型，提取 10 个关键节点特征（如 `normalized_mz`、`position_ratio`、`is_characteristic` 等）。
+* **库回溯**：对判定为阳性的样本，系统会计算其余弦相似度，并从 `ku.txt` 谱图库中回溯最可能的化学结构。
+
+## 3. 部署说明 (Docker)
+
+系统已完全容器化，可通过以下步骤快速部署：
+
+### 步骤 A：准备数据
+
+确保 `data/` 目录下存有原始风险表和谱图库，`models/` 下存有对应的 `.h5` 模型文件。
+
+### 步骤 B：构建镜像
+
+在项目根目录下执行，构建过程会自动运行 `convert.py` 以生成归一化统计量（`stats.joblib`）和二进制数据库：
+
+```bash
+docker build -t ms_analysis_system .
+
 ```
 
-## Integrate with your tools
+### 步骤 C：运行容器
 
-* [Set up project integrations](https://gitlab.warships.cn/molyleaf/ms-detection-app/-/settings/integrations)
+```bash
+docker run -d -p 5000:5000 --name ms_container ms_analysis_system
 
-## Collaborate with your team
+```
 
-* [Invite team members and collaborators](https://docs.gitlab.com/ee/user/project/members/)
-* [Create a new merge request](https://docs.gitlab.com/ee/user/project/merge_requests/creating_merge_requests.html)
-* [Automatically close issues from merge requests](https://docs.gitlab.com/ee/user/project/issues/managing_issues.html#closing-issues-automatically)
-* [Enable merge request approvals](https://docs.gitlab.com/ee/user/project/merge_requests/approvals/)
-* [Set auto-merge](https://docs.gitlab.com/user/project/merge_requests/auto_merge/)
+访问 `http://localhost:5000` 即可开始使用。
 
-## Test and Deploy
+## 4. 技术特性
 
-Use the built-in continuous integration in GitLab.
+* **特征维度**：10 维（去除了 Intensity 直接依赖，增强了 m/z 相对分布特征）。
+* **匹配精度**：特征峰匹配支持小数点后 1 位容差，Risk0 精确比对支持 0.0001 Da 容差。
+* **高性能**：采用二进制索引库，二级谱图检索响应速度达毫秒级。
 
-* [Get started with GitLab CI/CD](https://docs.gitlab.com/ee/ci/quick_start/)
-* [Analyze your code for known vulnerabilities with Static Application Security Testing (SAST)](https://docs.gitlab.com/ee/user/application_security/sast/)
-* [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/ee/topics/autodevops/requirements.html)
-* [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/ee/user/clusters/agent/)
-* [Set up protected environments](https://docs.gitlab.com/ee/ci/environments/protected_environments.html)
+---
 
-***
+### 开发备注
 
-# Editing this README
-
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thanks to [makeareadme.com](https://www.makeareadme.com/) for this template.
-
-## Suggestions for a good README
-
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
-
-## Name
-Choose a self-explaining name for your project.
-
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
-
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
-
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
-
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
-
-## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
-
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
-
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
-
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
-
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
-
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
-
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
-
-## License
-For open source projects, say how it is licensed.
-
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+* 如需更新训练模型，请同步更新 `data_processed/stats.joblib` 中的均值与标准差，以保证归一化一致性。
+* 上传的文件临时存储在容器的 `/tmp` 目录中。

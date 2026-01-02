@@ -1,7 +1,9 @@
 flask
 pandas
 numpy==2.2.6
-tensorflow
 joblib
 openpyxl
 scikit-learn
+werkzeug
+gunicorn
+onnxruntime
