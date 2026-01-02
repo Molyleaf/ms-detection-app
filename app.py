@@ -22,7 +22,7 @@ app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 MS1_PIPELINE = get_ms1_pipeline()
 RISK_MATCHER = RiskMatcher('data_processed/risk_db.joblib')
 SPEC_MATCHER = SpectrumMatcher('data_processed/spectrum_db.joblib')
-CLASSIFIER = MS2Classifier('models/251229.h5', 'data_processed/stats.joblib')
+CLASSIFIER = MS2Classifier('models/251229.onnx', 'data_processed/stats.joblib')
 
 @app.route('/')
 def index():

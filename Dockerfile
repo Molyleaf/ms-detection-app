@@ -10,8 +10,6 @@ ARG DEBIAN_FRONTEND=noninteractive
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    FLASK_APP="app:app" \
-    PYTHONPATH="/app" \
     TF_CPP_MIN_LOG_LEVEL=2
 
 # 更换 APT 源
@@ -32,8 +30,6 @@ RUN pip config set global.index-url https://mirrors.zju.edu.cn/pypi/web/simple \
 # 复制转换后的数据和模型（假设已在宿主机运行过 convert.py）
 COPY data_processed/ ./data_processed/
 COPY models/ ./models/
-
-# 复制源代码
 COPY core/ ./core/
 COPY templates/ ./templates/
 COPY app.py .
