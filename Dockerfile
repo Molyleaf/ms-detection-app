@@ -29,7 +29,7 @@ RUN pip config set global.index-url https://mirrors.zju.edu.cn/pypi/web/simple \
 
 # 复制转换后的数据和模型（假设已在宿主机运行过 convert.py）
 COPY data_processed/ ./data_processed/
-COPY models/ ./models/
+COPY models/model.onnx ./models/model.onnx
 COPY core/ ./core/
 COPY templates/ ./templates/
 COPY app.py .
