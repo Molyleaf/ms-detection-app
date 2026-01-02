@@ -2,20 +2,24 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
-  <title>一级质谱分析结果</title>
+  <title>一级质谱筛选结果</title>
+  <style>
+    .risk-Risk0, .risk-Risk1 { color: red; font-weight: bold; }
+    .risk-Safe { color: green; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 8px; border: 1px solid #ddd; text-align: left; }
+  </style>
 </head>
 <body>
-<h1>一级质谱筛选结果 (模式: {{ mode }})</h1>
-<p>系统已自动清理同位素峰并归一化强度。</p>
-
-<table border="1">
+<h1>一级质谱初步筛选 (模式: {{ mode }})</h1>
+<table>
   <thead>
   <tr>
-    <th>质量 (Mass)</th>
-    <th>强度 (Intensity)</th>
+    <th>母离子 m/z</th>
+    <th>归一化强度</th>
     <th>风险等级</th>
     <th>库匹配质量</th>
-    <th>操作</th>
+    <th>二级质谱分析 (MS/MS)</th>
   </tr>
   </thead>
   <tbody>
@@ -23,23 +27,15 @@
   <tr>
     <td>{{ "%.4f"|format(peak.Mass) }}</td>
     <td>{{ "%.2f"|format(peak.Intensity) }}</td>
-    <td>
-      {% if peak.Risk_Level == 'Safe' %}
-      安全
-      {% else %}
-      <strong>{{ peak.Risk_Level }}</strong>
-      {% endif %}
-    </td>
+    <td class="risk-{{ peak.Risk_Level }}">{{ peak.Risk_Level }}</td>
     <td>{{ "%.4f"|format(peak.Matched_Mass) if peak.Matched_Mass > 0 else "-" }}</td>
     <td>
-      <form action="/analyze_ms2" method="post">
+      <form action="/predict_ms2" method="post">
         <input type="hidden" name="parent_mz" value="{{ peak.Mass }}">
         <input type="hidden" name="risk_level" value="{{ peak.Risk_Level }}">
         <input type="hidden" name="matched_mass" value="{{ peak.Matched_Mass }}">
-        <label>
-          <textarea name="ms2_data" placeholder="在此粘贴二级质谱数据 (格式 mz:int,mz:int...)" required></textarea>
-        </label>
-        <button type="submit">分析此危险峰 (MS2)</button>
+        <input type="text" name="ms2_data" placeholder="格式: mz:int,mz:int" required>
+        <button type="submit">执行深度判定</button>
       </form>
     </td>
   </tr>

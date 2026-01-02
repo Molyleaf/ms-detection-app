@@ -24,52 +24,55 @@ app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 RISK_MATCHER = RiskMatcher('data_processed/risk_db.joblib')
 # 阳性谱图回溯匹配器
 SPEC_MATCHER = SpectrumMatcher('data_processed/spectrum_db.joblib')
-# ONNX 推理分类器 (替代原有 TensorFlow 模型)
+# ONNX 推理分类器
 CLASSIFIER = MS2Classifier('models/model.onnx', 'data_processed/stats.joblib')
 
 @app.route('/')
 def index():
+    """渲染首页上传界面"""
     return render_template('index.html')
 
 @app.route('/upload_ms1', methods=['POST'])
 def upload_ms1():
-    """处理一级质谱上传与预处理"""
+    """处理一级质谱上传并渲染筛选结果页面"""
     if 'file' not in request.files:
-        return jsonify({'error': '未上传文件'}), 400
+        return "未上传文件", 400
 
     file = request.files['file']
     mode = request.form.get('mode', 'positive')
 
     if file.filename == '':
-        return jsonify({'error': '文件名为空'}), 400
+        return "文件名为空", 400
 
     try:
-        # 读取数据
+        # 读取上传的 Excel 数据
         df = pd.read_excel(file)
 
-        # 修复点：使用 fit_transform。
-        # 每次请求重新获取实例以确保针对当前文件进行正确的强度归一化拟合。
+        # 核心逻辑修复：使用 fit_transform 进行动态归一化
         ms1_pipeline = get_ms1_pipeline()
         df_clean = ms1_pipeline.fit_transform(df)
 
         # 风险库匹配
         results = RISK_MATCHER.match_ms1_peaks(df_clean, mode=mode)
 
-        return jsonify(results.to_dict(orient='records'))
+        # 将结果转换为字典列表，供 results_ms1.html 中的 Jinja2 循环渲染
+        peaks = results.to_dict(orient='records')
+
+        return render_template('results_ms1.html', peaks=peaks, mode=mode)
     except Exception as e:
         logger.error(f"处理 MS1 失败: {e}")
-        return jsonify({'error': str(e)}), 500
+        return f"处理失败: {str(e)}", 500
 
-@app.route('/predict_ms2', methods=['POST'])
-def predict_ms2():
-    """执行二级质谱 ONNX 推理与库回溯"""
+@app.route('/analyze_ms2', methods=['POST'])
+def analyze_ms2():
+    """执行二级质谱深度分析报告渲染"""
     ms2_data = request.form.get('ms2_data')
     parent_mz = float(request.form.get('parent_mz', 0))
     risk_level = request.form.get('risk_level', 'Safe')
     matched_mass = float(request.form.get('matched_mass', 0))
 
     if not ms2_data:
-        return jsonify({'error': '无数据'}), 400
+        return "二级质谱谱图数据为空", 400
 
     # 1. 尝试触发 Risk0 快速旁路逻辑 (对齐 qlc.ipynb)
     is_risk0_positive = CLASSIFIER.check_risk0_bypass(risk_level, parent_mz, matched_mass)
@@ -81,27 +84,31 @@ def predict_ms2():
         probs, preds = CLASSIFIER.predict([ms2_data])
         prob, pred = probs[0], preds[0]
 
+    # 获取风险描述和 CSS 类 (danger/warning/success)
     risk_text, risk_class = CLASSIFIER.get_risk_label(prob)
 
     # 3. 阳性结果进行库回溯相似度匹配
     library_matches = []
     if pred == 1:
         try:
-            peaks = [p.split(':') for p in ms2_data.replace(';', ',').split(',') if ':' in p]
+            # 解析 mz:intensity 字符串
+            peaks_raw = [p.split(':') for p in ms2_data.replace(';', ',').split(',') if ':' in p]
             spec_obj = {
-                'mz': np.array([float(p[0]) for p in peaks]),
-                'intensities': np.array([float(p[1]) for p in peaks])
+                'mz': np.array([float(p[0]) for p in peaks_raw]),
+                'intensities': np.array([float(p[1]) for p in peaks_raw])
             }
             library_matches = SPEC_MATCHER.match(spec_obj)
         except Exception as e:
-            logger.warning(f"相似度匹配失败: {e}")
+            logger.warning(f"谱图库匹配失败: {e}")
 
-    return jsonify({
-        'prob': round(float(prob), 4),
-        'risk_text': risk_text,
-        'risk_class': risk_class,
-        'matches': library_matches
-    })
+    # 4. 渲染分析报告页面，传递 Jinja2 替换变量
+    return render_template('results_ms2.html',
+                           parent_mz=parent_mz,
+                           prob=round(float(prob) * 100, 2), # 页面显示百分制
+                           risk_text=risk_text,
+                           risk_class=risk_class,
+                           matches=library_matches)
 
 if __name__ == '__main__':
+    # 默认运行在 5000 端口，与 Dockerfile 保持一致
     app.run(host='0.0.0.0', port=5000)
