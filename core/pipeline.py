@@ -90,6 +90,10 @@ class MS2GraphExtractor(BaseEstimator, TransformerMixin):
         else:
             self.stats = {'mz_mean': 0, 'mz_std': 1, 'max_mz_mean': 0, 'max_mz_std': 1}
 
+    # 修复点：添加 fit 方法以支持 sklearn 接口
+    def fit(self, X, y=None):
+        return self
+
     def _extract_single(self, ms_str):
         # 解析逻辑支持 qlc.ipynb 中的逗号/分号分隔格式
         peaks = []

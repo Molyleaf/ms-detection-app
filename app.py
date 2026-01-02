@@ -20,13 +20,11 @@ app.config['UPLOAD_FOLDER'] = '/tmp'
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 
 # 初始化全局组件 (路径对应 Docker 容器内路径)
-# 1. 获取对齐 qlc.ipynb 逻辑的一级质谱流水线
-MS1_PIPELINE = get_ms1_pipeline()
-# 2. 风险库匹配器 (Risk0/1/2/3)
+# 风险库匹配器 (Risk0/1/2/3)
 RISK_MATCHER = RiskMatcher('data_processed/risk_db.joblib')
-# 3. 阳性谱图回溯匹配器
+# 阳性谱图回溯匹配器
 SPEC_MATCHER = SpectrumMatcher('data_processed/spectrum_db.joblib')
-# 4. ONNX 推理分类器 (替代原有 TensorFlow 模型)
+# ONNX 推理分类器 (替代原有 TensorFlow 模型)
 CLASSIFIER = MS2Classifier('models/model.onnx', 'data_processed/stats.joblib')
 
 @app.route('/')
@@ -46,10 +44,13 @@ def upload_ms1():
         return jsonify({'error': '文件名为空'}), 400
 
     try:
-        # 读取并应用对齐 qlc.ipynb 的预处理流水线
+        # 读取数据
         df = pd.read_excel(file)
-        # 流水线包含：归一化 -> 删零 -> 同位素清理 -> 强度过滤
-        df_clean = MS1_PIPELINE.transform(df)
+
+        # 修复点：使用 fit_transform。
+        # 每次请求重新获取实例以确保针对当前文件进行正确的强度归一化拟合。
+        ms1_pipeline = get_ms1_pipeline()
+        df_clean = ms1_pipeline.fit_transform(df)
 
         # 风险库匹配
         results = RISK_MATCHER.match_ms1_peaks(df_clean, mode=mode)
