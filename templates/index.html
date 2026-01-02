@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html>
+<body>
+<h1>质谱危险品分析系统 - 步骤 1</h1>
+<form action="/upload_ms1" method="post" enctype="multipart/form-data">
+	<p>上传一级质谱 (Excel): <input type="file" name="file"></p>
+	<p>离子模式:
+		<select name="mode">
+			<option value="positive">正离子 (+)</option>
+			<option value="negative">负离子 (-)</option>
+		</select>
+	</p>
+	<button type="submit">开始扫描危险峰</button>
+</form>
+</body>
+</html>

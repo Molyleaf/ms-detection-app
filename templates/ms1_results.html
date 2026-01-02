@@ -1,28 +1,37 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>Title</title>
-</head>
+<html>
 <body>
+<h1>发现危险峰</h1>
+{% if message %}<p>{{ message }}</p>{% endif %}
 
-<h2>分析完成：一级质谱危险峰列表</h2>
 <table border="1">
-  <tr><th>m/z</th><th>强度</th><th>操作</th></tr>
+  <thead>
+  <tr>
+    <th>质量数 (m/z)</th>
+    <th>相对强度</th>
+    <th>风险等级</th>
+    <th>操作</th>
+  </tr>
+  </thead>
+  <tbody>
   {% for peak in peaks %}
   <tr>
-    <td>{{ peak.mz }}</td>
-    <td>{{ peak.intensity }}</td>
+    <td>{{ peak.Mass }}</td>
+    <td>{{ "%.2f"|format(peak.Intensity) }}</td>
+    <td>{{ peak.Risk }}</td>
     <td>
-      <form action="/analyze_ms2" method="post" enctype="multipart/form-data">
-        <input type="hidden" name="target_mz" value="{{ peak.mz }}">
-        上传该峰的二级质谱: <input type="file" name="ms2_file">
-        <button type="submit">开始模型分析</button>
+      <form action="/analyze_ms2" method="post">
+        <input type="hidden" name="mz" value="{{ peak.Mass }}">
+        <input type="hidden" name="mode" value="{{ mode }}">
+        <textarea name="ms2_data" placeholder="在此粘贴该峰的二级质谱数据 (格式 m/z:int, ...)"></textarea><br>
+        <button type="submit">深度模型判定</button>
       </form>
     </td>
   </tr>
   {% endfor %}
+  </tbody>
 </table>
-
+<br>
+<a href="/">返回重新上传</a>
 </body>
 </html>

@@ -4,5 +4,4 @@ numpy
 tensorflow
 joblib
 openpyxl
-matchms
-rdkit
+scikit-learn

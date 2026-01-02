@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<body>
+<h1>分析结果报告</h1>
+<div style="padding: 20px; border: 2px solid gray;">
+  <p>目标母离子: <b>{{ mz }}</b></p>
+  <p>阳性概率: <b>{{ prob }}</b></p>
+  <p>风险结论: <span style="font-size: 1.2em;">{{ risk_text }}</span></p>
+</div>
+
+{% if identifications %}
+<h3>库检索匹配到的潜在化合物 (SMILES):</h3>
+<ul>
+  {% for item in identifications %}
+  <li>{{ item.smiles }} (相似度得分: {{ "%.4f"|format(item.score) }})</li>
+  {% endfor %}
+</ul>
+{% endif %}
+
+<br>
+<a href="/">完成并返回主页</a>
+</body>
+</html>

@@ -1,8 +1,8 @@
-import pandas as pd
-import joblib
 import os
-import logging
+import pandas as pd
 import numpy as np
+import joblib
+import logging
 
 # 配置日志
 logging.basicConfig(
@@ -11,78 +11,127 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-class DataConverter:
-    def __init__(self, raw_data_dir='original_data', processed_data_dir='data_processed'):
-        self.raw_dir = raw_data_dir
-        self.processed_dir = processed_data_dir
-        if not os.path.exists(self.processed_dir):
-            os.makedirs(self.processed_dir)
+def parse_ms_string(ms_string):
+    """
+    解析质谱字符串 (格式如 mass1:int1,mass2:int2)
+    提取自 notebook 的 MS_SMILES_Matcher 逻辑
+    """
+    try:
+        ms_string = str(ms_string).strip().replace('"', '').replace("'", "")
+        if ';' in ms_string:
+            peaks = ms_string.split(';')
+        elif ',' in ms_string:
+            peaks = ms_string.split(',')
+        else:
+            peaks = ms_string.split()
 
-    def convert_risk_db(self, filename='risk_matching-new.xlsx'):
-        """转换一级质谱风险数据库"""
-        logger.info(f"开始转换风险库: {filename}")
-        input_path = os.path.join(self.raw_dir, filename)
+        mz_list = []
+        intensity_list = []
 
-        if not os.path.exists(input_path):
-            logger.error(f"找不到原始文件: {input_path}")
-            return
+        for peak in peaks:
+            peak = peak.strip()
+            if not peak: continue
 
-        # 读取所有 Sheet
-        xlsx = pd.ExcelFile(input_path)
-        risk_map = {}
-        for sheet_name in xlsx.sheet_names:
-            df = pd.read_excel(xlsx, sheet_name=sheet_name)
-            # 假设列名为 'Mass' 或 'mz'
-            mz_col = 'Mass' if 'Mass' in df.columns else df.columns[0]
-            # 提取 MZ 列表并去重，转换为 numpy 数组加速后续匹配
-            risk_map[sheet_name] = np.sort(df[mz_col].dropna().unique())
+            parts = peak.split(':') if ':' in peak else peak.split()
+            if len(parts) >= 2:
+                try:
+                    mz_list.append(float(parts[0].strip()))
+                    intensity_list.append(float(parts[1].strip()))
+                except ValueError:
+                    continue
 
-        output_path = os.path.join(self.processed_dir, 'risk_db.joblib')
-        joblib.dump(risk_map, output_path)
-        logger.info(f"风险库转换完成，保存至: {output_path}")
+        if not mz_list:
+            return None
 
-    def convert_spectral_library(self, filename='ku.txt'):
-        """转换二级质谱谱图库 (ku.txt)"""
-        logger.info(f"开始转换二级谱图库: {filename}")
-        input_path = os.path.join(self.raw_dir, filename)
+        # 归一化强度到 0-100 (基于最大峰)
+        max_int = max(intensity_list)
+        if max_int > 0:
+            intensity_list = [i / max_int * 100 for i in intensity_list]
 
-        if not os.path.exists(input_path):
-            logger.error(f"找不到原始文件: {input_path}")
-            return
+        return {"mz": np.array(mz_list), "intensities": np.array(intensity_list)}
+    except Exception as e:
+        logger.error(f"解析质谱字符串失败: {e}")
+        return None
 
-        library_data = []
-        try:
-            with open(input_path, 'r', encoding='utf-8') as f:
-                for line in f:
-                    parts = line.strip().split('\t')
-                    if len(parts) < 2:
-                        continue
+def convert_risk_database(input_path, output_path):
+    """
+    转换风险匹配数据库 (Excel -> Joblib)
+    包含正/负离子模式下的精确值和两位小数近似值
+    """
+    logger.info(f"正在转换风险数据库: {input_path}")
+    if not os.path.exists(input_path):
+        logger.error(f"找不到原始风险数据库: {input_path}")
+        return
 
-                    smiles = parts[0]
-                    peaks_str = parts[1]
+    xls = pd.ExcelFile(input_path)
+    risk_db = {
+        'positive': {'risk1_precise': [], 'risk1_rounded': set(), 'risk2': set(), 'risk3': set()},
+        'negative': {'risk1_precise': [], 'risk1_rounded': set(), 'risk2': set(), 'risk3': set()}
+    }
 
-                    # 解析质谱字符串: mz1:int1,mz2:int2...
-                    mz_list = []
-                    int_list = []
-                    for p in peaks_str.split(','):
-                        if ':' in p:
-                            m, i = p.split(':')
-                            mz_list.append(float(m))
-                            int_list.append(float(i))
+    pos_cols = ['[M+H]+', '[M+Na]+', '[M+K]+']
+    neg_cols = ['[M-H]-']
 
-                    library_data.append({
-                        'smiles': smiles,
-                        'mz': np.array(mz_list),
-                        'intensities': np.array(int_list)
-                    })
-        except Exception as e:
-            logger.error(f"解析库文件时出错: {e}")
+    for sheet_name in ['风险1', '风险2', '风险3']:
+        if sheet_name not in xls.sheet_names:
+            logger.warning(f"跳过不存在的工作表: {sheet_name}")
+            continue
 
-        output_path = os.path.join(self.processed_dir, 'spectrum_library.joblib')
-        joblib.dump(library_data, output_path)
-        logger.info(f"二级谱图库转换完成，保存至: {output_path}")
+        df = pd.read_excel(xls, sheet_name=sheet_name)
+
+        for mode, target_cols in [('positive', pos_cols), ('negative', neg_cols)]:
+            available_cols = [c for c in target_cols if c in df.columns]
+            if not available_cols: continue
+
+            # 提取所有数值并清洗
+            all_values = pd.to_numeric(df[available_cols].values.flatten(), errors='coerce')
+            all_values = all_values[~np.isnan(all_values)]
+
+            if sheet_name == '风险1':
+                risk_db[mode]['risk1_precise'] = all_values.tolist()
+                risk_db[mode]['risk1_rounded'] = set(np.round(all_values, 2))
+            elif sheet_name == '风险2':
+                risk_db[mode]['risk2'] = set(np.round(all_values, 2))
+            elif sheet_name == '风险3':
+                risk_db[mode]['risk3'] = set(np.round(all_values, 2))
+
+    joblib.dump(risk_db, output_path)
+    logger.info(f"风险数据库转换完成，保存至: {output_path}")
+
+def convert_spectrum_library(input_path, output_path):
+    """
+    转换化合物库 (ku.txt -> Joblib)
+    """
+    logger.info(f"正在转换谱图库: {input_path}")
+    if not os.path.exists(input_path):
+        logger.error(f"找不到原始谱图库: {input_path}")
+        return
+
+    library_data = []
+    with open(input_path, 'r', encoding='utf-8') as f:
+        for i, line in enumerate(f):
+            line = line.strip()
+            if not line or line.startswith('#'): continue
+
+            parts = line.split('\t')
+            if len(parts) >= 2:
+                smiles = parts[0].strip()
+                ms_data_str = parts[1].strip()
+                spec = parse_ms_string(ms_data_str)
+                if spec:
+                    spec['smiles'] = smiles
+                    spec['id'] = i + 1
+                    library_data.append(spec)
+
+    joblib.dump(library_data, output_path)
+    logger.info(f"谱图库转换完成，共加载 {len(library_data)} 条记录，保存至: {output_path}")
 
 if __name__ == "__main__":
-    converter = DataConverter()
-    converter.convert_risk_db()
-    converter.convert_spectral_library()
+    # 创建输出目录
+    os.makedirs('data_processed', exist_ok=True)
+
+    # 执行转换
+    convert_risk_database('data/risk_matching-new-new-new.xlsx', 'data_processed/risk_db.joblib')
+    convert_spectrum_library('data/ku.txt', 'data_processed/spectrum_db.joblib')
+
+    logger.info("所有预处理任务已完成。")
