@@ -84,7 +84,7 @@ def convert_risk_database(input_path='data/risk_matching-new-new-new.xlsx'):
                     processed_db['negative'][key].update([round(v, 2) for v in vals])
 
         # 保存
-        os.makedirs('data_processed', exist_ok=True)
+        os.makedirs('../data_processed', exist_ok=True)
         joblib.dump(processed_db, 'data_processed/risk_db.joblib')
         logger.info("风险数据库转换完成，保存至 data_processed/risk_db.joblib")
 
@@ -170,7 +170,7 @@ def save_global_stats(training_data_path='data/化合物-7.xlsx'):
     logger.info(f"全局统计量已保存: {stats}")
 
 if __name__ == "__main__":
-    os.makedirs('data_processed', exist_ok=True)
+    os.makedirs('../data_processed', exist_ok=True)
     convert_risk_database()
     convert_spectrum_library()
     save_global_stats()
