@@ -1,0 +1,8 @@
+flask
+pandas
+numpy
+tensorflow
+joblib
+openpyxl
+matchms
+rdkit

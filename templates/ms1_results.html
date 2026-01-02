@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Title</title>
+</head>
+<body>
+
+<h2>分析完成：一级质谱危险峰列表</h2>
+<table border="1">
+  <tr><th>m/z</th><th>强度</th><th>操作</th></tr>
+  {% for peak in peaks %}
+  <tr>
+    <td>{{ peak.mz }}</td>
+    <td>{{ peak.intensity }}</td>
+    <td>
+      <form action="/analyze_ms2" method="post" enctype="multipart/form-data">
+        <input type="hidden" name="target_mz" value="{{ peak.mz }}">
+        上传该峰的二级质谱: <input type="file" name="ms2_file">
+        <button type="submit">开始模型分析</button>
+      </form>
+    </td>
+  </tr>
+  {% endfor %}
+</table>
+
+</body>
+</html>
