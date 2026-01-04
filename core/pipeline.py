@@ -25,16 +25,23 @@ PEAK_GROUPS = {
     'very_high_mass': [round(p, 1) for p in [312.2, 315.1, 327.1, 341.2, 354.2, 377.1, 396.2]]
 }
 
-class MS1Cleaner(BaseEstimator, TransformerMixin):
-    """一级质谱清理器：执行归一化、窗口聚类同位素清理(2Da)、低强度过滤"""
-    def __init__(self, mass_tolerance=2.0, min_intensity=1.0):
-        self.mass_tolerance = mass_tolerance
-        self.min_intensity = min_intensity
 
-    def fit(self, X, y=None): return self
+class MS1Cleaner(BaseEstimator, TransformerMixin):
+    """
+    一级质谱清理器：执行归一化、同位素清理(2Da)、低强度过滤
+
+    同位素清理：严格对齐 Notebook 的“按质量排序 + 窗口聚类(2Da) + 组内取最大强度 + 跳跃”模式
+    """
+    def __init__(self, mass_tolerance=2.0, min_intensity=1.0):
+        self.mass_tolerance = float(mass_tolerance)
+        self.min_intensity = float(min_intensity)
+
+    def fit(self, X, y=None):
+        return self
 
     def transform(self, df):
-        if df is None or df.empty: return pd.DataFrame(columns=['Mass', 'Intensity'])
+        if df is None or df.empty:
+            return pd.DataFrame(columns=['Mass', 'Intensity'])
 
         curr_df = df.copy()
         m_col = next((c for c in curr_df.columns if str(c).lower() in ['mass', 'm/z', 'mz']), curr_df.columns[0])
@@ -45,40 +52,53 @@ class MS1Cleaner(BaseEstimator, TransformerMixin):
             'Intensity': pd.to_numeric(curr_df[i_col], errors='coerce')
         }).dropna()
 
-        # 1. 归一化强度 (0-100)
-        max_i, min_i = res['Intensity'].max(), res['Intensity'].min()
-        if max_i == min_i: res['Intensity'] = 100.0
-        else: res['Intensity'] = 100 * (res['Intensity'] - min_i) / (max_i - min_i + 1e-9)
+        if res.empty:
+            return pd.DataFrame(columns=['Mass', 'Intensity'])
 
-        # 2. 删除零强度并按质量升序排列 (同位素清理准备)
+        # 1) 强度归一化到 0-100（Notebook 的做法）
+        max_i = float(res['Intensity'].max())
+        min_i = float(res['Intensity'].min())
+        if max_i == min_i:
+            # Notebook 在 max==min 情况下会给 0；但为了流程稳定，这里给常数也可。
+            # 若你需要严格与 Notebook 的 0 对齐，可改为 0.0。
+            res['Intensity'] = 0.0
+        else:
+            res['Intensity'] = 100.0 * (res['Intensity'] - min_i) / (max_i - min_i + 1e-9)
+
+        # 2) 删除归一化后强度为 0 的峰，并按 Mass 升序（同位素窗口聚类准备）
         res = res[res['Intensity'] > 0].sort_values('Mass').reset_index(drop=True)
+        if res.empty:
+            return pd.DataFrame(columns=['Mass', 'Intensity'])
 
-        # 3. 严格对齐 Notebook 同位素峰清理：窗口聚类跳跃算法
-        masses = res['Mass'].values
-        intensities = res['Intensity'].values
-        keep_indices = np.ones(len(masses), dtype=bool)
+        # 3) 同位素清理：按 Mass 升序 + 2Da 窗口聚类 + 组内取最大强度 + 跳跃
+        masses = res['Mass'].to_numpy(dtype=float)
+        intensities = res['Intensity'].to_numpy(dtype=float)
+
+        keep = np.ones(len(masses), dtype=bool)
 
         i = 0
         while i < len(masses):
             j = i + 1
-            # 寻找 2Da 范围内的组
             while j < len(masses) and (masses[j] - masses[i]) <= self.mass_tolerance:
                 j += 1
 
-            # 如果组内有多个峰，只保留该组中强度最大的峰
             if j - i > 1:
-                max_idx_in_group = np.argmax(intensities[i:j]) + i
+                max_idx_in_group = int(np.argmax(intensities[i:j])) + i
                 for k in range(i, j):
                     if k != max_idx_in_group:
-                        keep_indices[k] = False
+                        keep[k] = False
 
-            # 关键：直接跳到该组之后的下一个峰（聚类跳跃）
+            # 关键：跳到下一组
             i = j
 
-        res = res[keep_indices].reset_index(drop=True)
+        res = res[keep].reset_index(drop=True)
 
-        # 4. 过滤归一化后强度 < 1 的峰
-        return res[res['Intensity'] >= self.min_intensity].reset_index(drop=True)
+        # 4) 过滤低强度（Notebook 默认阈值 1.0）
+        res = res[res['Intensity'] >= self.min_intensity].reset_index(drop=True)
+
+        # 保持按 Mass 升序（对齐 Notebook 输出习惯）
+        return res.sort_values('Mass').reset_index(drop=True)
+
 
 class MS2GraphExtractor(BaseEstimator, TransformerMixin):
     """二级质谱图特征提取器：保持与模型输入对齐"""
@@ -97,7 +117,8 @@ class MS2GraphExtractor(BaseEstimator, TransformerMixin):
                 if ':' in p:
                     parts = p.split(':')
                     peak_data.append((float(parts[0]), float(parts[1])))
-        except: pass
+        except:
+            pass
 
         if not peak_data:
             return np.zeros((self.max_nodes, self.node_dim)), np.eye(self.max_nodes)
@@ -114,7 +135,8 @@ class MS2GraphExtractor(BaseEstimator, TransformerMixin):
                 mz, intensity = peak_data[j]
             elif actual_count > 0:
                 mz, intensity = peak_data[-1]
-            else: mz, intensity = 0.0, 0.0
+            else:
+                mz, intensity = 0.0, 0.0
 
             top_mzs.append(mz)
             rmz = round(mz, 1)
@@ -140,13 +162,16 @@ class MS2GraphExtractor(BaseEstimator, TransformerMixin):
         for r in range(min(actual_count, self.max_nodes)):
             for c in range(min(actual_count, self.max_nodes)):
                 if r != c:
-                    adj[r, c] = np.exp(-(top_mzs[r] - top_mzs[c])**2 / (2 * 50.0**2))
+                    adj[r, c] = np.exp(-(top_mzs[r] - top_mzs[c]) ** 2 / (2 * 50.0 ** 2))
         return node_features, adj
 
-    def fit(self, X, y=None): return self
+    def fit(self, X, y=None):
+        return self
+
     def transform(self, X):
         res = [self._extract_single(s) for s in X]
         return np.array([r[0] for r in res]), np.array([r[1] for r in res])
+
 
 def get_ms1_pipeline():
     return Pipeline([('cleaner', MS1Cleaner())])

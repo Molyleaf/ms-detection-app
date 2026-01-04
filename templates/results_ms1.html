@@ -9,12 +9,12 @@
     .risk-success { color: #5cb85c; }
     table { width: 100%; border-collapse: collapse; margin-top: 20px; }
     th, td { padding: 10px; border: 1px solid #ddd; text-align: left; }
-    .action-cell { min-width: 250px; }
+    .action-cell { min-width: 260px; }
   </style>
 </head>
 <body>
 <h1>一级质谱筛选结果 (模式: {{ mode }})</h1>
-<p>系统已根据 Notebook 逻辑自动清理同位素峰。当前显示 <strong>Output Risk</strong>。</p>
+<p>系统已按 Notebook 的同位素清理逻辑处理：<strong>Mass 升序 + 2Da 窗口聚类</strong>。当前展示 <strong>Output Risk</strong>（Risk0 也展示为 Risk1）。</p>
 
 <table>
   <thead>
@@ -32,13 +32,13 @@
     <td>{{ "%.4f"|format(peak.Mass) }}</td>
     <td>{{ "%.2f"|format(peak.Intensity) }}</td>
 
-    {# 处理 Output Risk 显示逻辑 #}
-    {% if peak.Risk_Level == 'Risk0' %}
-    <td class="risk-danger">有危险 (Dangerous)</td>
-    {% elif peak.Risk_Level == 'Risk1' %}
+    {# 展示逻辑：只看 Output_Risk（对齐 Notebook：Risk0 也显示 Risk1） #}
+    {% if peak.Output_Risk == 'Risk1' %}
     <td class="risk-danger">Risk1 高风险</td>
-    {% elif peak.Risk_Level == 'Risk2' %}
+    {% elif peak.Output_Risk == 'Risk2' %}
     <td class="risk-warning">Risk2 高风险</td>
+    {% elif peak.Output_Risk == 'Risk3' %}
+    <td class="risk-success">未见异常 (Risk3)</td>
     {% else %}
     <td class="risk-success">安全 (Safe)</td>
     {% endif %}
@@ -46,16 +46,16 @@
     <td>{{ "%.4f"|format(peak.Matched_Mass) if peak.Matched_Mass > 0 else "-" }}</td>
 
     <td>
-      {# 处理 L2/MS2 交互逻辑 #}
-      {% if peak.Risk_Level == 'Risk0' %}
-      <span style="color: #d9534f;">已确认危险，跳过二级分析</span>
-      {% elif peak.Risk_Level in ['Risk1', 'Risk2'] %}
-      <form action="/analyze_ms2" method="post" enctype="multipart/form-data" style="display: flex; gap: 5px;">
+      {% if peak.Output_Risk in ['Risk1', 'Risk2'] %}
+      <form action="/analyze_ms2" method="post" enctype="multipart/form-data" style="display: flex; gap: 6px;">
         <input type="hidden" name="parent_mz" value="{{ peak.Mass }}">
-        <input type="hidden" name="risk_level" value="{{ peak.Risk_Level }}">
+        <input type="hidden" name="actual_risk" value="{{ peak.Actual_Risk }}">
+        <input type="hidden" name="output_risk" value="{{ peak.Output_Risk }}">
         <input type="hidden" name="matched_mass" value="{{ peak.Matched_Mass }}">
         <input type="file" name="ms2_file" accept=".xlsx, .xls, .csv" required style="width: 150px;">
-        <button type="submit" style="background: #d9534f; color: white; border: none; padding: 5px 10px; cursor: pointer;">上传判定</button>
+        <button type="submit" style="background: #d9534f; color: white; border: none; padding: 5px 10px; cursor: pointer;">
+          上传判定
+        </button>
       </form>
       {% else %}
       <span style="color: #999;">无需分析</span>
@@ -65,6 +65,7 @@
   {% endfor %}
   </tbody>
 </table>
+
 <br>
 <a href="/">返回重新上传 MS1</a>
 </body>
