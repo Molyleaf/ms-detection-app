@@ -4,24 +4,24 @@
   <meta charset="UTF-8">
   <title>一级质谱分析结果</title>
   <style>
-    .risk-Risk0, .risk-Risk1 { color: #d9534f; font-weight: bold; }
-    .risk-Risk2 { color: #f0ad4e; font-weight: bold; }
-    .risk-Safe { color: #5cb85c; }
+    .risk-danger { color: #d9534f; font-weight: bold; }
+    .risk-warning { color: #f0ad4e; font-weight: bold; }
+    .risk-success { color: #5cb85c; }
     table { width: 100%; border-collapse: collapse; margin-top: 20px; }
     th, td { padding: 10px; border: 1px solid #ddd; text-align: left; }
-    .action-cell { min-width: 300px; }
+    .action-cell { min-width: 250px; }
   </style>
 </head>
 <body>
 <h1>一级质谱筛选结果 (模式: {{ mode }})</h1>
-<p>系统已根据 <code>qlc.ipynb</code> 逻辑自动清理同位素峰并归一化强度。</p>
+<p>系统已根据 Notebook 逻辑自动清理同位素峰。当前显示 <strong>Output Risk</strong>。</p>
 
 <table>
   <thead>
   <tr>
     <th>质量 (Mass)</th>
     <th>归一化强度</th>
-    <th>风险等级</th>
+    <th>风险等级 (Output Risk)</th>
     <th>库匹配质量</th>
     <th class="action-cell">二级质谱 (MS2) 分析</th>
   </tr>
@@ -31,24 +31,35 @@
   <tr>
     <td>{{ "%.4f"|format(peak.Mass) }}</td>
     <td>{{ "%.2f"|format(peak.Intensity) }}</td>
-    <td class="risk-{{ peak.Risk_Level }}">
-      {{ "安全" if peak.Risk_Level == 'Safe' else peak.Risk_Level }}
-    </td>
+
+    {# 处理 Output Risk 显示逻辑 #}
+    {% if peak.Risk_Level == 'Risk0' %}
+    <td class="risk-danger">有危险 (Dangerous)</td>
+    {% elif peak.Risk_Level == 'Risk1' %}
+    <td class="risk-danger">Risk1 高风险</td>
+    {% elif peak.Risk_Level == 'Risk2' %}
+    <td class="risk-warning">Risk2 高风险</td>
+    {% else %}
+    <td class="risk-success">安全 (Safe)</td>
+    {% endif %}
+
     <td>{{ "%.4f"|format(peak.Matched_Mass) if peak.Matched_Mass > 0 else "-" }}</td>
+
     <td>
+      {# 处理 L2/MS2 交互逻辑 #}
+      {% if peak.Risk_Level == 'Risk0' %}
+      <span style="color: #d9534f;">已确认危险，跳过二级分析</span>
+      {% elif peak.Risk_Level in ['Risk1', 'Risk2'] %}
       <form action="/analyze_ms2" method="post" enctype="multipart/form-data" style="display: flex; gap: 5px;">
         <input type="hidden" name="parent_mz" value="{{ peak.Mass }}">
         <input type="hidden" name="risk_level" value="{{ peak.Risk_Level }}">
         <input type="hidden" name="matched_mass" value="{{ peak.Matched_Mass }}">
-
-        {% if peak.Risk_Level in ['Risk1', 'Risk2'] %}
-        <input type="file" name="ms2_file" accept=".xlsx, .xls, .csv" required style="width: 180px;">
-        <button type="submit" style="background: #d9534f; color: white; border: none; padding: 5px 10px; cursor: pointer;">解析文件并判定</button>
-        {% else %}
-        <input type="text" name="ms2_data" placeholder="格式 mz:int,mz:int">
-        <button type="submit">分析</button>
-        {% endif %}
+        <input type="file" name="ms2_file" accept=".xlsx, .xls, .csv" required style="width: 150px;">
+        <button type="submit" style="background: #d9534f; color: white; border: none; padding: 5px 10px; cursor: pointer;">上传判定</button>
       </form>
+      {% else %}
+      <span style="color: #999;">无需分析</span>
+      {% endif %}
     </td>
   </tr>
   {% endfor %}
