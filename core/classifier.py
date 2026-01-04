@@ -6,7 +6,9 @@ from core.pipeline import MS2GraphExtractor
 class MS2Classifier:
     def __init__(self, model_path='models/model.onnx', stats_path='data_processed/stats.joblib'):
         self.extractor = MS2GraphExtractor(stats_path=stats_path)
-        try: self.session = ort.InferenceSession(model_path)
+        try:
+            providers = ['CPUExecutionProvider']
+            self.session = ort.InferenceSession(model_path)
         except: self.session = None
 
     def check_characteristic_peaks_rule(self, ms_str):

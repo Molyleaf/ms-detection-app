@@ -1,5 +1,5 @@
 # Dockerfile
-FROM python:3.13-slim-trixie
+FROM python:3.12-slim-trixie
 
 WORKDIR /app
 
@@ -29,4 +29,4 @@ COPY app.py .
 RUN mkdir -p /tmp && chmod 777 /tmp
 
 EXPOSE 5000
-CMD ["gunicorn", "--bind", "0.0.0.0:5000", "app:app"]
+CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "2", "--timeout", "120", "app:app"]
