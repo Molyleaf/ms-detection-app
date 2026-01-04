@@ -13,23 +13,20 @@ def ensure_dir(path):
 
 def build_risk_db():
     """
-    逻辑：读取 risk_matching-1.xlsx。
-    1. 遍历所有 Sheet。
-    2. 读取 [M+H]+, [M+Na]+, [M+K]+ 归入 positive 模式。
-    3. 读取 [M-H]- 归入 negative 模式。
+    逻辑：读取 risk_matching-1.xlsx，使用 set 防止重复或覆盖。
     """
     excel_path = os.path.join(DATA_DIR, 'risk_matching-1.xlsx')
     output_path = os.path.join(OUTPUT_DIR, 'risk_db.joblib')
     if not os.path.exists(excel_path): return
 
-    # 初始化库
+    # 初始化库：使用 set 存储 rounded 值
     db = {
-        'positive': {'risk0': [], 'risk1_precise': [], 'risk1_rounded': {}, 'risk2': {}, 'risk3': {}},
-        'negative': {'risk0': [], 'risk1_precise': [], 'risk1_rounded': {}, 'risk2': {}, 'risk3': {}}
+        'positive': {'risk1_precise': [], 'risk1_rounded': set(), 'risk2': set(), 'risk3': set()},
+        'negative': {'risk1_precise': [], 'risk1_rounded': set(), 'risk2': set(), 'risk3': set()}
     }
 
     xls = pd.ExcelFile(excel_path)
-    sheet_map = {'风险1': 'risk1', '风险2': 'risk2', '风险3': 'risk3', '风险0': 'risk0'}
+    sheet_map = {'风险1': 'risk1', '风险2': 'risk2', '风险3': 'risk3', '风险0': 'risk1'} # 风险0也归入风险1
 
     for sheet_name in xls.sheet_names:
         mapped_key = sheet_map.get(sheet_name)
@@ -37,33 +34,21 @@ def build_risk_db():
 
         df = pd.read_excel(xls, sheet_name=sheet_name)
 
-        # 处理正离子模式 (包含多种加合)
-        pos_cols = ['[M+H]+', '[M+Na]+', '[M+K]+']
-        for col in pos_cols:
-            if col in df.columns:
-                masses = df[col].dropna().astype(float).tolist()
-                for m in masses:
-                    if mapped_key == 'risk0': db['positive']['risk0'].append(m)
-                    elif mapped_key == 'risk1':
-                        db['positive']['risk1_precise'].append(m)
-                        db['positive']['risk1_rounded'][round(m, 2)] = m
-                    else:
-                        db['positive'][mapped_key][round(m, 2)] = m
-
-        # 处理负离子模式
-        if '[M-H]-' in df.columns:
-            neg_masses = df['[M-H]-'].dropna().astype(float).tolist()
-            for m in neg_masses:
-                if mapped_key == 'risk0': db['negative']['risk0'].append(m)
-                elif mapped_key == 'risk1':
-                    db['negative']['risk1_precise'].append(m)
-                    db['negative']['risk1_rounded'][round(m, 2)] = m
-                else:
-                    db['negative'][mapped_key][round(m, 2)] = m
+        # 遍历正/负离子列
+        for mode, cols in [('positive', ['[M+H]+', '[M+Na]+', '[M+K]+']), ('negative', ['[M-H]-'])]:
+            for col in cols:
+                if col in df.columns:
+                    masses = df[col].dropna().astype(float).tolist()
+                    for m in masses:
+                        if mapped_key == 'risk1':
+                            db[mode]['risk1_precise'].append(m)
+                            db[mode]['risk1_rounded'].add(round(m, 2)) # 使用 set.add
+                        else:
+                            db[mode][mapped_key].add(round(m, 2))
 
     ensure_dir(OUTPUT_DIR)
     joblib.dump(db, output_path)
-    print(f"✅ 风险库已构建，涵盖所有加合离子。")
+    print(f"✅ 风险库已构建（使用 set 结构），共处理 {len(xls.sheet_names)} 个表单。")
 
 def build_spectrum_db():
     """彻底取消清洗逻辑，原模原样保留 ku.txt 的所有峰"""

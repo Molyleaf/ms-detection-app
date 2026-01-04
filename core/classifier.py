@@ -21,15 +21,17 @@ class MS2Classifier:
             return count >= 3 # 满足3个及以上直接判定
         except: return False
 
+
+    # core/classifier.py (片段：修改 bypass 判定)
     def check_risk0_bypass(self, risk_level, ms2_data, matched_mass):
-        """Risk0 旁路：对齐 Notebook 0.005 Da 判定"""
-        if risk_level == 'Risk0' and matched_mass > 0:
+        """通过质量误差进行旁路判定，不再依赖特定的 Risk0 字符串标签"""
+        if risk_level == 'Risk1' and matched_mass > 0: # 只要是 Risk1 且有匹配质量
             try:
                 peaks = [p.split(':') for p in ms2_data.replace(';', ',').split(',') if ':' in p]
-                int_arr = np.array([float(p[1]) for p in peaks])
                 mz_arr = np.array([float(p[0]) for p in peaks])
+                int_arr = np.array([float(p[1]) for p in peaks])
                 max_mz = mz_arr[np.argmax(int_arr)]
-                # 若二级最大峰与一级匹配质量误差 < 0.005，视为确认
+                # 如果二级最大峰与库中精确质量误差 < 0.005 Da，判定为 Confirmed
                 if abs(max_mz - matched_mass) < 0.005:
                     return True
             except: pass
