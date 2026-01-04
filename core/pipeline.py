@@ -26,7 +26,7 @@ PEAK_GROUPS = {
 }
 
 class MS1Cleaner(BaseEstimator, TransformerMixin):
-    """一级质谱清理器：执行归一化、同位素清理(2Da)、低强度过滤"""
+    """一级质谱清理器：执行归一化、贪婪同位素清理(2Da)、低强度过滤"""
     def __init__(self, mass_tolerance=2.0, min_intensity=1.0):
         self.mass_tolerance = mass_tolerance
         self.min_intensity = min_intensity
@@ -47,25 +47,24 @@ class MS1Cleaner(BaseEstimator, TransformerMixin):
 
         # 1. 归一化强度 (0-100)
         max_i, min_i = res['Intensity'].max(), res['Intensity'].min()
-        if max_i == min_i: res['Intensity'] = 0.0
+        if max_i == min_i: res['Intensity'] = 100.0
         else: res['Intensity'] = 100 * (res['Intensity'] - min_i) / (max_i - min_i + 1e-9)
 
-        # 2. 删除归一化后强度为0的行并按强度排序(对齐Notebook同位素清理逻辑)
+        # 2. 删除零强度并按强度降序排列（为同位素贪婪清理做准备）
         res = res[res['Intensity'] > 0].sort_values('Intensity', ascending=False).reset_index(drop=True)
 
-        # 3. 同位素峰清理 (2Da 范围内保留最强峰)
+        # 3. 同位素峰清理：2Da 范围内最强峰抑制弱峰
         masses = res['Mass'].values
-        intensities = res['Intensity'].values
-        keep = np.ones(len(masses), dtype=bool)
+        keep_indices = np.ones(len(masses), dtype=bool)
 
         for i in range(len(masses)):
-            if not keep[i]: continue
+            if not keep_indices[i]: continue
             for j in range(i + 1, len(masses)):
-                if not keep[j]: continue
-                if abs(masses[j] - masses[i]) <= self.mass_tolerance:
-                    keep[j] = False # 强度弱的被移除
+                if keep_indices[j] and abs(masses[j] - masses[i]) <= self.mass_tolerance:
+                    keep_indices[j] = False
 
-        res = res[keep].sort_values('Mass').reset_index(drop=True)
+        res = res[keep_indices].sort_values('Mass').reset_index(drop=True)
+
         # 4. 过滤归一化后强度 < 1 的峰
         return res[res['Intensity'] >= self.min_intensity].reset_index(drop=True)
 
@@ -91,7 +90,7 @@ class MS2GraphExtractor(BaseEstimator, TransformerMixin):
         if not peak_data:
             return np.zeros((self.max_nodes, self.node_dim)), np.eye(self.max_nodes)
 
-        # 排序并截断
+        # 按强度排序并截断
         peak_data.sort(key=lambda x: x[1], reverse=True)
         max_intensity_mz = peak_data[0][0]
         actual_count = len(peak_data)
@@ -109,12 +108,12 @@ class MS2GraphExtractor(BaseEstimator, TransformerMixin):
             top_mzs.append(mz)
             rmz = round(mz, 1)
 
-            # F0-F9 特征工程 (对齐 Notebook)
+            # F0-F9 特征工程 (严格对齐 Notebook)
             node_features[j, 0] = (mz - self.stats.get('mz_mean', 0)) / (self.stats.get('mz_std', 1) + 1e-6)
             node_features[j, 1] = j / max(actual_count, 1)
             node_features[j, 2] = 1.0 if j == 0 else 0.0
             node_features[j, 3] = 1.0 if j == actual_count - 1 else 0.0
-            node_features[j, 4] = 1.0 if rmz in ROUNDED_CHAR_PEAKS else 0.0
+            node_features[j, 4] = 1.0 if rmz in ROUNDED_CHAR_PEAKS else 0.0 # 修改为舍入匹配
             node_features[j, 5] = min([abs(mz - cp) for cp in CHARACTERISTIC_PEAKS]) / 100.0
 
             mass_reg = 0.0
@@ -123,10 +122,11 @@ class MS2GraphExtractor(BaseEstimator, TransformerMixin):
                     mass_reg = {'low_mass': 0.25, 'middle_mass': 0.5, 'high_mass': 0.75, 'very_high_mass': 1.0}[name]
                     break
             node_features[j, 6] = mass_reg
-            node_features[j, 7] = 1.0 if rmz in ROUNDED_KEY_PEAKS else 0.0
+            node_features[j, 7] = 1.0 if rmz in ROUNDED_KEY_PEAKS else 0.0 # 修改为舍入匹配
             node_features[j, 8] = (max_intensity_mz - self.stats.get('max_intensity_mz_mean', 0)) / (self.stats.get('max_intensity_mz_std', 1) + 1e-6)
             node_features[j, 9] = mz / (max_intensity_mz + 1e-6)
 
+        # 邻接矩阵 (高斯内核)
         adj = np.eye(self.max_nodes)
         for r in range(min(actual_count, self.max_nodes)):
             for c in range(min(actual_count, self.max_nodes)):

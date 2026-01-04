@@ -8,6 +8,7 @@ from core.classifier import MS2Classifier
 
 app = Flask(__name__)
 
+# 初始化组件
 RISK_MATCHER = RiskMatcher('data_processed/risk_db.joblib')
 SPEC_MATCHER = SpectrumMatcher('data_processed/spectrum_db.joblib')
 CLASSIFIER = MS2Classifier('models/model.onnx', 'data_processed/stats.joblib')
@@ -22,6 +23,7 @@ def upload_ms1():
     if not file: return "未选择文件", 400
     try:
         df = pd.read_excel(file) if file.filename.endswith(('.xlsx', '.xls')) else pd.read_csv(file)
+        # 执行严格的同位素清洗与归一化
         df_clean = get_ms1_pipeline().fit_transform(df)
         results = RISK_MATCHER.match_ms1_peaks(df_clean, mode=mode)
         return render_template('results_ms1.html', peaks=results.to_dict(orient='records'), mode=mode)
@@ -42,14 +44,8 @@ def analyze_ms2():
 
     if not ms2_data: return "无数据", 400
 
-    # 1. 提取最大峰 MZ
-    peaks = [p.split(':') for p in ms2_data.replace(';', ',').split(',') if ':' in p]
-    mz_arr = np.array([float(p[0]) for p in peaks])
-    int_arr = np.array([float(p[1]) for p in peaks])
-    max_mz = mz_arr[np.argmax(int_arr)]
-
-    # 2. 推理
-    if CLASSIFIER.check_risk0_bypass(risk_level, max_mz, matched_mass):
+    # 1. 旁路逻辑与预测
+    if CLASSIFIER.check_risk0_bypass(risk_level, ms2_data, matched_mass):
         prob, pred = 1.0, 1
     else:
         probs, preds = CLASSIFIER.predict([ms2_data])
@@ -57,9 +53,13 @@ def analyze_ms2():
 
     risk_text, risk_class = CLASSIFIER.get_risk_label(prob)
 
+    # 2. 阳性回溯
     matches = []
     if pred == 1:
-        matches = SPEC_MATCHER.match({'mz': mz_arr, 'intensities': int_arr})
+        raw_peaks = [p.split(':') for p in ms2_data.replace(';', ',').split(',') if ':' in p]
+        target_spec = {'mz': np.array([float(p[0]) for p in raw_peaks]),
+                       'intensities': np.array([float(p[1]) for p in raw_peaks])}
+        matches = SPEC_MATCHER.match(target_spec)
 
     return render_template('results_ms2.html', prob=round(prob*100,2), risk_text=risk_text, risk_class=risk_class, matches=matches)
 

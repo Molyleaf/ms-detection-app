@@ -10,27 +10,34 @@ class MS2Classifier:
         except: self.session = None
 
     def check_characteristic_peaks_rule(self, ms_str):
-        """核心那非类特征峰硬匹配规则"""
+        """核心碎片组合硬匹配逻辑"""
         try:
             peaks = [float(p.split(':')[0]) for p in str(ms_str).replace(';', ',').split(',') if ':' in p]
-            # 常见的核心特征碎片
+            # 常见那非类核心碎片
             hard_peaks = [166.1, 283.1, 312.2, 354.2]
             count = sum(1 for hp in hard_peaks if any(abs(p - hp) < 0.1 for p in peaks))
-            return count >= 3 # 满足3个及以上直接判阳
+            return count >= 3 # 满足3个及以上直接判定
         except: return False
 
-    def check_risk0_bypass(self, risk_level, ms2_max_mz, matched_mass):
-        """Risk0 旁路：若二级最大峰与一级匹配质量极近(0.005Da)，直接通过"""
+    def check_risk0_bypass(self, risk_level, ms2_data, matched_mass):
+        """Risk0 旁路：对齐 Notebook 0.005 Da 判定"""
         if risk_level == 'Risk0' and matched_mass > 0:
-            if abs(ms2_max_mz - matched_mass) < 0.005:
-                return True
+            try:
+                peaks = [p.split(':') for p in ms2_data.replace(';', ',').split(',') if ':' in p]
+                int_arr = np.array([float(p[1]) for p in peaks])
+                mz_arr = np.array([float(p[0]) for p in peaks])
+                max_mz = mz_arr[np.argmax(int_arr)]
+                # 若二级最大峰与一级匹配质量误差 < 0.005，视为确认
+                if abs(max_mz - matched_mass) < 0.005:
+                    return True
+            except: pass
         return False
 
     def predict(self, ms2_list):
         if not self.session: return [0.0], [0]
         probs, preds = [], []
         for ms_str in ms2_list:
-            # 1. 优先硬规则
+            # 1. 硬规则优先
             if self.check_characteristic_peaks_rule(ms_str):
                 probs.append(1.0); preds.append(1); continue
 

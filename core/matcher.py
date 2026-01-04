@@ -36,14 +36,14 @@ class RiskMatcher:
                     matched = True; break
             if matched: continue
 
-            # 2. 约等匹配 (Risk1-3)
+            # 2. 模糊/约等匹配
             if rm in mode_db.get('risk1_rounded', set()): results.at[idx, 'Risk_Level'] = 'Risk1'
             elif rm in mode_db.get('risk2', set()): results.at[idx, 'Risk_Level'] = 'Risk2'
             elif rm in mode_db.get('risk3', set()): results.at[idx, 'Risk_Level'] = 'Risk3'
         return results
 
 class SpectrumMatcher:
-    """谱图库余弦相似度匹配"""
+    """二级质谱回溯匹配器"""
     def __init__(self, db_path='data_processed/spectrum_db.joblib'):
         try: self.library = joblib.load(db_path)
         except: self.library = []
