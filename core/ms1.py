@@ -1,6 +1,7 @@
 # core/ms1.py
 import os
 from dataclasses import dataclass
+from functools import lru_cache
 
 import joblib
 import numpy as np
@@ -124,10 +125,54 @@ class RiskConfig:
     ion_mode: str = "positive"  # "positive" or "negative"
 
 
+@lru_cache(maxsize=8)
 def load_risk_db(joblib_path: str = "data_processed/risk_db.joblib"):
     if not os.path.exists(joblib_path):
         raise FileNotFoundError(f"找不到风险库 joblib: {joblib_path}")
-    return joblib.load(joblib_path)
+    db = joblib.load(joblib_path)
+
+    # 预编译：把需要频繁查询的结构变成“排序数组”，后续用二分找最近邻
+    for mode in ("positive", "negative"):
+        mode_db = db.get(mode, {})
+        r1 = mode_db.get("risk1_precise", []) or []
+        r1_arr = np.asarray(r1, dtype=np.float64)
+        r1_arr.sort()
+        mode_db["risk1_precise_sorted"] = r1_arr
+
+        # rounded->precise 的候选也转成排序数组（候选一般不大，但做了更稳）
+        r2p = mode_db.get("risk1_rounded_to_precise", {}) or {}
+        r2p_arr = {}
+        for k, arr in r2p.items():
+            a = np.asarray(arr, dtype=np.float64)
+            a.sort()
+            r2p_arr[float(k)] = a
+        mode_db["risk1_rounded_to_precise_sorted"] = r2p_arr
+
+    return db
+
+
+def _nearest_in_sorted(arr: np.ndarray, x: float) -> tuple[float | None, float]:
+    """
+    在已排序数组 arr 中找到离 x 最近的值，返回 (closest_value, abs_diff)。
+    arr 为空时返回 (None, +inf)
+    """
+    if arr is None or arr.size == 0:
+        return None, float("inf")
+
+    j = int(np.searchsorted(arr, x))
+    best_v = None
+    best_d = float("inf")
+
+    if 0 <= j < arr.size:
+        d = abs(float(arr[j]) - x)
+        best_v, best_d = float(arr[j]), float(d)
+
+    if 0 <= j - 1 < arr.size:
+        d = abs(float(arr[j - 1]) - x)
+        if d < best_d:
+            best_v, best_d = float(arr[j - 1]), float(d)
+
+    return best_v, best_d
 
 
 def match_one_mz(mz_value: float, risk_mode_db: dict, threshold: float):
@@ -138,43 +183,38 @@ def match_one_mz(mz_value: float, risk_mode_db: dict, threshold: float):
       - Risk2/3：两位小数命中对应集合
       - 否则 Low Risk
     """
-    mz_rounded = round(float(mz_value), 2)
+    mzv = float(mz_value)
+    mz_rounded = round(mzv, 2)
 
-    risk1_precise = risk_mode_db["risk1_precise"]
     risk1_rounded = risk_mode_db["risk1_rounded"]
-    r2p = risk_mode_db["risk1_rounded_to_precise"]
 
-    # Risk0: 精确阈值命中 risk1_precise
-    if risk1_precise:
-        diffs = [abs(float(mz_value) - float(v)) for v in risk1_precise]
-        min_diff = min(diffs)
-        if min_diff <= threshold:
-            closest = float(risk1_precise[int(np.argmin(diffs))])
+    # Risk0：改为“二分最近邻”，不再全表 diffs 扫描
+    r1_sorted = risk_mode_db.get("risk1_precise_sorted", None)
+    closest, min_diff = _nearest_in_sorted(r1_sorted, mzv)
+    if min_diff <= threshold and closest is not None:
+        return {
+            "Actual Risk": "Risk0",
+            "Output Risk": "Risk1",
+            "Matched m/z": mz_rounded,
+            "Matched to m/z": float(closest),
+            "Match Type": f"精确匹配(阈值={threshold}Da)",
+            "Difference (Da)": float(min_diff),
+        }
+
+    # Risk1：两位小数命中，但排除 Risk0 情况（diff > threshold）
+    if mz_rounded in risk1_rounded:
+        r2p_sorted = risk_mode_db.get("risk1_rounded_to_precise_sorted", {})
+        candidates = r2p_sorted.get(float(mz_rounded), None)
+        closest2, diff2 = _nearest_in_sorted(candidates, mzv)
+        if closest2 is not None and diff2 > threshold:
             return {
-                "Actual Risk": "Risk0",
+                "Actual Risk": "Risk1",
                 "Output Risk": "Risk1",
                 "Matched m/z": mz_rounded,
-                "Matched to m/z": closest,
-                "Match Type": f"精确匹配(阈值={threshold}Da)",
-                "Difference (Da)": float(min_diff),
+                "Matched to m/z": float(closest2),
+                "Match Type": "近似匹配(两位小数相同)",
+                "Difference (Da)": float(diff2),
             }
-
-    # Risk1: 两位小数命中，但排除 Risk0 情况
-    if mz_rounded in risk1_rounded:
-        candidates = r2p.get(mz_rounded, [])
-        if candidates:
-            diffs = [abs(float(mz_value) - float(v)) for v in candidates]
-            closest = float(candidates[int(np.argmin(diffs))])
-            diff = float(min(diffs))
-            if diff > threshold:
-                return {
-                    "Actual Risk": "Risk1",
-                    "Output Risk": "Risk1",
-                    "Matched m/z": mz_rounded,
-                    "Matched to m/z": closest,
-                    "Match Type": "近似匹配(两位小数相同)",
-                    "Difference (Da)": diff,
-                }
 
     if mz_rounded in risk_mode_db["risk2"]:
         return {
@@ -221,55 +261,49 @@ def risk_match_l1(
     elif "Original m/z" in df.columns:
         mz_series = df["Original m/z"]
     else:
-        # 兜底：第一列当 m/z
         mz_series = df.iloc[:, 0]
 
-    results = []
-    for idx, mz in enumerate(mz_series.tolist(), start=1):
+    # 用“列式收集”比 append dict list 更快
+    idx_list = []
+    omz_list = []
+    actual_list = []
+    output_list = []
+    matched_mz_list = []
+    matched_to_list = []
+    match_type_list = []
+    diff_list = []
+
+    for idx, mz in enumerate(mz_series, start=1):
         try:
             mzv = float(mz)
         except (TypeError, ValueError):
             continue
 
         r = match_one_mz(mzv, mode_db, cfg.threshold)
-        r_row = {
-            "Index": idx,
-            "Original m/z": float(mzv),
-            **r,
-        }
-        results.append(r_row)
 
-    out = pd.DataFrame(results)
+        idx_list.append(idx)
+        omz_list.append(float(mzv))
+        actual_list.append(r["Actual Risk"])
+        output_list.append(r["Output Risk"])
+        matched_mz_list.append(r["Matched m/z"])
+        matched_to_list.append(r["Matched to m/z"])
+        match_type_list.append(r["Match Type"])
+        diff_list.append(r["Difference (Da)"])
+
+    out = pd.DataFrame(
+        {
+            "Index": idx_list,
+            "Original m/z": omz_list,
+            "Actual Risk": actual_list,
+            "Output Risk": output_list,
+            "Matched m/z": matched_mz_list,
+            "Matched to m/z": matched_to_list,
+            "Match Type": match_type_list,
+            "Difference (Da)": diff_list,
+        }
+    )
 
     with pd.ExcelWriter(output_xlsx, engine="openpyxl") as w:
         out.to_excel(w, sheet_name=f"All Results ({cfg.ion_mode})", index=False)
 
     return out
-
-
-def format_risk_output(
-        risk_results_xlsx: str,
-        output_xlsx: str,
-        sheet_name: str,
-) -> pd.DataFrame:
-    df = pd.read_excel(risk_results_xlsx, sheet_name=sheet_name)
-    if "Actual Risk" not in df.columns:
-        raise ValueError("缺少列: Actual Risk")
-
-    def _fmt(actual: str) -> str:
-        if actual == "Low Risk":
-            return "Negative, Low Risk"
-        if actual == "Risk3":
-            return "Negative, Risk3"
-        if actual in ("Risk0", "Risk1"):
-            return "Risk1高风险，需要进行二级质谱筛查"
-        if actual == "Risk2":
-            return "Risk2高风险，需要进行二级质谱筛查"
-        return str(actual)
-
-    df["Formatted Output"] = df["Actual Risk"].astype(str).map(_fmt)
-
-    with pd.ExcelWriter(output_xlsx, engine="openpyxl") as w:
-        df.to_excel(w, sheet_name="All Matching Results", index=False)
-
-    return df

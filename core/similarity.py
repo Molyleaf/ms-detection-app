@@ -1,28 +1,48 @@
 # core/similarity.py
 import os
+from functools import lru_cache
+
 import joblib
 import numpy as np
 
 
-def _match_count_similarity(test_mz: np.ndarray, lib_mz: np.ndarray, tol: float) -> int:
+@lru_cache(maxsize=4)
+def _load_spectrum_db(spectrum_db_joblib: str):
+    if not os.path.exists(spectrum_db_joblib):
+        raise FileNotFoundError(f"找不到谱库 joblib: {spectrum_db_joblib}")
+    lib = joblib.load(spectrum_db_joblib)
+
+    # 防御性处理：确保每条 entry["mz"] 是 numpy array 且为升序
+    # （如果你的资产一定是排序好的，这里几乎零成本；不排序就会影响 searchsorted）
+    for e in lib:
+        mz = e.get("mz", None)
+        if mz is None:
+            e["mz"] = np.asarray([], dtype=np.float32)
+            continue
+        arr = np.asarray(mz, dtype=np.float32)
+        if arr.size >= 2 and np.any(arr[1:] < arr[:-1]):
+            arr = np.sort(arr)
+        e["mz"] = arr
+    return lib
+
+
+def _match_count_similarity(test_mz: np.ndarray, lib_mz_sorted: np.ndarray, tol: float) -> int:
     """
     计算匹配峰数量（每个 test 峰只要在 lib 中找到一个 tol 内的峰就算匹配）
-    简单但稳定，足够复刻 notebook 的“匹配峰数量”思路。
+    注意：lib_mz_sorted 必须是升序数组（这样 searchsorted 才正确）
     """
-    if len(test_mz) == 0 or len(lib_mz) == 0:
+    if test_mz.size == 0 or lib_mz_sorted.size == 0:
         return 0
-    lib_mz_sorted = np.sort(lib_mz)
+
     cnt = 0
     for mz in test_mz:
-        # 二分找最近邻
         j = int(np.searchsorted(lib_mz_sorted, mz))
-        candidates = []
-        if 0 <= j < len(lib_mz_sorted):
-            candidates.append(lib_mz_sorted[j])
-        if 0 <= j - 1 < len(lib_mz_sorted):
-            candidates.append(lib_mz_sorted[j - 1])
-        if any(abs(mz - c) <= tol for c in candidates):
+        if 0 <= j < lib_mz_sorted.size and abs(float(mz) - float(lib_mz_sorted[j])) <= tol:
             cnt += 1
+            continue
+        if 0 <= j - 1 < lib_mz_sorted.size and abs(float(mz) - float(lib_mz_sorted[j - 1])) <= tol:
+            cnt += 1
+            continue
     return cnt
 
 
@@ -32,10 +52,7 @@ def topk_library_matches(
         tol: float = 0.2,
         top_k: int = 10,
 ):
-    if not os.path.exists(spectrum_db_joblib):
-        raise FileNotFoundError(f"找不到谱库 joblib: {spectrum_db_joblib}")
-
-    lib = joblib.load(spectrum_db_joblib)
+    lib = _load_spectrum_db(spectrum_db_joblib)
 
     # 解析 test peaks（只取 mz）
     mzs = []
@@ -50,17 +67,20 @@ def topk_library_matches(
     test_mz = np.asarray(sorted(mzs), dtype=np.float32)
 
     results = []
+    denom = int(test_mz.size)
     for entry in lib:
-        m = _match_count_similarity(test_mz, entry["mz"], tol=tol)
-        score = (m / len(test_mz)) if len(test_mz) else 0.0
+        lib_mz = entry["mz"]
+        m = _match_count_similarity(test_mz, lib_mz, tol=tol)
+        score = (m / denom) if denom else 0.0
         results.append(
             {
                 "smiles": entry.get("smiles", "N/A"),
                 "similarity": float(score),
                 "matches": int(m),
-                "test_peaks": int(len(test_mz)),
-                "lib_peaks": int(len(entry["mz"])),
+                "test_peaks": int(denom),
+                "lib_peaks": int(lib_mz.size),
             }
         )
+
     results.sort(key=lambda x: x["similarity"], reverse=True)
     return results[:top_k]
