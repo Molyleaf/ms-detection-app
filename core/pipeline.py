@@ -26,7 +26,7 @@ PEAK_GROUPS = {
 }
 
 class MS1Cleaner(BaseEstimator, TransformerMixin):
-    """一级质谱清理器：执行归一化、贪婪同位素清理(2Da)、低强度过滤"""
+    """一级质谱清理器：执行归一化、窗口聚类同位素清理(2Da)、低强度过滤"""
     def __init__(self, mass_tolerance=2.0, min_intensity=1.0):
         self.mass_tolerance = mass_tolerance
         self.min_intensity = min_intensity
@@ -50,26 +50,38 @@ class MS1Cleaner(BaseEstimator, TransformerMixin):
         if max_i == min_i: res['Intensity'] = 100.0
         else: res['Intensity'] = 100 * (res['Intensity'] - min_i) / (max_i - min_i + 1e-9)
 
-        # 2. 删除零强度并按强度降序排列（为同位素贪婪清理做准备）
-        res = res[res['Intensity'] > 0].sort_values('Intensity', ascending=False).reset_index(drop=True)
+        # 2. 删除零强度并按质量升序排列 (同位素清理准备)
+        res = res[res['Intensity'] > 0].sort_values('Mass').reset_index(drop=True)
 
-        # 3. 同位素峰清理：2Da 范围内最强峰抑制弱峰
+        # 3. 严格对齐 Notebook 同位素峰清理：窗口聚类跳跃算法
         masses = res['Mass'].values
+        intensities = res['Intensity'].values
         keep_indices = np.ones(len(masses), dtype=bool)
 
-        for i in range(len(masses)):
-            if not keep_indices[i]: continue
-            for j in range(i + 1, len(masses)):
-                if keep_indices[j] and abs(masses[j] - masses[i]) <= self.mass_tolerance:
-                    keep_indices[j] = False
+        i = 0
+        while i < len(masses):
+            j = i + 1
+            # 寻找 2Da 范围内的组
+            while j < len(masses) and (masses[j] - masses[i]) <= self.mass_tolerance:
+                j += 1
 
-        res = res[keep_indices].sort_values('Mass').reset_index(drop=True)
+            # 如果组内有多个峰，只保留该组中强度最大的峰
+            if j - i > 1:
+                max_idx_in_group = np.argmax(intensities[i:j]) + i
+                for k in range(i, j):
+                    if k != max_idx_in_group:
+                        keep_indices[k] = False
+
+            # 关键：直接跳到该组之后的下一个峰（聚类跳跃）
+            i = j
+
+        res = res[keep_indices].reset_index(drop=True)
 
         # 4. 过滤归一化后强度 < 1 的峰
         return res[res['Intensity'] >= self.min_intensity].reset_index(drop=True)
 
 class MS2GraphExtractor(BaseEstimator, TransformerMixin):
-    """二级质谱图特征提取器：严格对齐 Notebook 特征工程"""
+    """二级质谱图特征提取器：保持与模型输入对齐"""
     def __init__(self, max_nodes=10, node_dim=10, stats_path='data_processed/stats.joblib'):
         self.max_nodes = max_nodes
         self.node_dim = node_dim
@@ -90,7 +102,6 @@ class MS2GraphExtractor(BaseEstimator, TransformerMixin):
         if not peak_data:
             return np.zeros((self.max_nodes, self.node_dim)), np.eye(self.max_nodes)
 
-        # 按强度排序并截断
         peak_data.sort(key=lambda x: x[1], reverse=True)
         max_intensity_mz = peak_data[0][0]
         actual_count = len(peak_data)
@@ -108,12 +119,11 @@ class MS2GraphExtractor(BaseEstimator, TransformerMixin):
             top_mzs.append(mz)
             rmz = round(mz, 1)
 
-            # F0-F9 特征工程 (严格对齐 Notebook)
             node_features[j, 0] = (mz - self.stats.get('mz_mean', 0)) / (self.stats.get('mz_std', 1) + 1e-6)
             node_features[j, 1] = j / max(actual_count, 1)
             node_features[j, 2] = 1.0 if j == 0 else 0.0
             node_features[j, 3] = 1.0 if j == actual_count - 1 else 0.0
-            node_features[j, 4] = 1.0 if rmz in ROUNDED_CHAR_PEAKS else 0.0 # 修改为舍入匹配
+            node_features[j, 4] = 1.0 if rmz in ROUNDED_CHAR_PEAKS else 0.0
             node_features[j, 5] = min([abs(mz - cp) for cp in CHARACTERISTIC_PEAKS]) / 100.0
 
             mass_reg = 0.0
@@ -122,11 +132,10 @@ class MS2GraphExtractor(BaseEstimator, TransformerMixin):
                     mass_reg = {'low_mass': 0.25, 'middle_mass': 0.5, 'high_mass': 0.75, 'very_high_mass': 1.0}[name]
                     break
             node_features[j, 6] = mass_reg
-            node_features[j, 7] = 1.0 if rmz in ROUNDED_KEY_PEAKS else 0.0 # 修改为舍入匹配
+            node_features[j, 7] = 1.0 if rmz in ROUNDED_KEY_PEAKS else 0.0
             node_features[j, 8] = (max_intensity_mz - self.stats.get('max_intensity_mz_mean', 0)) / (self.stats.get('max_intensity_mz_std', 1) + 1e-6)
             node_features[j, 9] = mz / (max_intensity_mz + 1e-6)
 
-        # 邻接矩阵 (高斯内核)
         adj = np.eye(self.max_nodes)
         for r in range(min(actual_count, self.max_nodes)):
             for c in range(min(actual_count, self.max_nodes)):
