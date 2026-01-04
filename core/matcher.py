@@ -153,4 +153,10 @@ class SpectrumMatcher:
         v1, v2 = np.array(s1), np.array(s2)
         return float(np.dot(v1, v2) / (np.linalg.norm(v1) * np.linalg.norm(v2) + 1e-6))
 
-    def match(self, target_spec,
+    def match(self, target_spec, top_k=3):
+        matches = []
+        for entry in self.library:
+            score = self.calculate_cosine(target_spec, entry)
+            if score > 0.5:
+                matches.append({'smiles': entry['smiles'], 'score': score})
+        return sorted(matches, key=lambda x: x['score'], reverse=True)[:top_k]
