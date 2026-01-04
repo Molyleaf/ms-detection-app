@@ -1,62 +1,48 @@
 # core/classifier.py
-import os
 import numpy as np
 import onnxruntime as ort
-from core.pipeline import MS2GraphExtractor, CHARACTERISTIC_PEAKS
+from core.pipeline import MS2GraphExtractor
 
 class MS2Classifier:
     def __init__(self, model_path='models/model.onnx', stats_path='data_processed/stats.joblib'):
-        self.extractor = MS2GraphExtractor(max_nodes=10, node_dim=10, stats_path=stats_path)
-        # ... (session 初始化逻辑不变)
+        self.extractor = MS2GraphExtractor(stats_path=stats_path)
+        try: self.session = ort.InferenceSession(model_path)
+        except: self.session = None
 
     def check_characteristic_peaks_rule(self, ms_str):
-        """
-        对齐 Notebook 的特征峰硬规则：
-        如果质谱数据中包含特定的那非类特征峰组合，则直接判定为阳性。
-        """
-        # 解析输入
+        """核心那非类特征峰硬匹配规则"""
         try:
-            peaks = []
-            for p in str(ms_str).replace(';', ',').split(','):
-                if ':' in p:
-                    peaks.append(float(p.split(':')[0]))
+            peaks = [float(p.split(':')[0]) for p in str(ms_str).replace(';', ',').split(',') if ':' in p]
+            # Notebook 定义的硬匹配关键组合
+            hard_peaks = [166.1, 283.1, 312.2, 354.2]
+            count = sum(1 for hp in hard_peaks if any(abs(p - hp) < 0.1 for p in peaks))
+            return count >= 3 # 匹配到3个以上直接判定阳性
+        except: return False
 
-            # Notebook 逻辑：如果包含 166.1, 283.1, 312.2 等关键组合 (示例逻辑，需按具体NB实现调整)
-            # 这里实现一个通用的特征峰匹配逻辑
-            count = 0
-            for cp in [166.1, 283.1, 312.2, 354.2]: # Notebook 中定义的硬匹配峰
-                if any(abs(p - cp) < 0.1 for p in peaks):
-                    count += 1
-            return count >= 3 # 如果匹配到3个以上特征峰
-        except:
-            return False
-
-    def predict(self, ms2_content_list):
-        if self.session is None: return [0.0], [0]
-
-        # 增加特征峰规则旁路
-        results_prob = []
-        for ms_str in ms2_content_list:
-            if self.check_characteristic_peaks_rule(ms_str):
-                results_prob.append(1.0)
-                continue
-
-            # 正常模型推理
-            nodes, adjs = self.extractor.transform([ms_str])
-            inputs = {"node_input": nodes.astype(np.float32), "adj_input": adjs.astype(np.float32)}
-            outputs = self.session.run(None, inputs)
-            results_prob.append(float(outputs[0].flatten()[0]))
-
-        probs = np.array(results_prob)
-        preds = (probs > 0.5).astype(int)
-        return probs.tolist(), preds.tolist()
-
-    def check_risk0_bypass(self, ms1_risk_level, ms2_max_mz, matched_mass):
-        """
-        Risk0 旁路逻辑：对齐 Notebook 的 0.005 Da 容差
-        """
-        if ms1_risk_level == 'Risk0' and matched_mass > 0:
-            # Notebook 使用 0.005 的容差进行母离子匹配判定
+    def check_risk0_bypass(self, risk_level, ms2_max_mz, matched_mass):
+        """Risk0 旁路逻辑：对齐 Notebook 0.005 Da 容差"""
+        if risk_level == 'Risk0' and matched_mass > 0:
             if abs(ms2_max_mz - matched_mass) < 0.005:
                 return True
         return False
+
+    def predict(self, ms2_list):
+        if not self.session: return [0.0], [0]
+        probs, preds = [], []
+        for ms_str in ms2_list:
+            if self.check_characteristic_peaks_rule(ms_str):
+                probs.append(1.0); preds.append(1); continue
+
+            nodes, adjs = self.extractor.transform([ms_str])
+            out = self.session.run(None, {
+                "node_input": nodes.astype(np.float32),
+                "adj_input": adjs.astype(np.float32)
+            })
+            p = float(out[0].flatten()[0])
+            probs.append(p); preds.append(1 if p > 0.5 else 0)
+        return probs, preds
+
+    def get_risk_label(self, prob):
+        if prob > 0.8: return "极高风险 (Positive)", "danger"
+        if prob > 0.5: return "高风险 (Suspect)", "warning"
+        return "低风险 (Negative)", "success"
