@@ -3,7 +3,7 @@ import numpy as np
 import joblib
 
 class RiskMatcher:
-    """一级质谱风险匹配器：严格执行 qlc.ipynb 0.005 Da 阈值"""
+    """一级质谱风险匹配器：严格执行 0.005 Da 阈值"""
     def __init__(self, db_path='data_processed/risk_db.joblib'):
         try: self.db = joblib.load(db_path)
         except: self.db = None
@@ -20,7 +20,7 @@ class RiskMatcher:
             m = row['Mass']
             rm = round(m, 2)
 
-            # 1. Risk0 & Risk1 精确匹配 (0.005 Da 容差)
+            # 1. 精确匹配 (Risk0 & Risk1 Precise)
             matched = False
             for target in mode_db.get('risk0', []):
                 if abs(m - target) < tolerance:
@@ -36,14 +36,14 @@ class RiskMatcher:
                     matched = True; break
             if matched: continue
 
-            # 2. 约等匹配
+            # 2. 约等匹配 (Risk1-3)
             if rm in mode_db.get('risk1_rounded', set()): results.at[idx, 'Risk_Level'] = 'Risk1'
             elif rm in mode_db.get('risk2', set()): results.at[idx, 'Risk_Level'] = 'Risk2'
             elif rm in mode_db.get('risk3', set()): results.at[idx, 'Risk_Level'] = 'Risk3'
         return results
 
 class SpectrumMatcher:
-    """二级质谱回溯匹配器"""
+    """谱图库余弦相似度匹配"""
     def __init__(self, db_path='data_processed/spectrum_db.joblib'):
         try: self.library = joblib.load(db_path)
         except: self.library = []
