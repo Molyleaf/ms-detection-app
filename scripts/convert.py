@@ -1,139 +1,214 @@
-# scripts/convert.py
-import pandas as pd
-import numpy as np
-import joblib
+# scripts/convert_assets.py
 import os
 from collections import defaultdict
+from dataclasses import dataclass
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DATA_DIR = os.path.join(BASE_DIR, '../data')
-OUTPUT_DIR = os.path.join(BASE_DIR, '../data_processed')
-
-
-def ensure_dir(path):
-    if not os.path.exists(path):
-        os.makedirs(path)
+import joblib
+import numpy as np
+import pandas as pd
 
 
-def build_risk_db():
+@dataclass(frozen=True)
+class Paths:
+    base_dir: str
+    data_dir: str
+    out_dir: str
+
+
+def _ensure_dir(path: str) -> None:
+    os.makedirs(path, exist_ok=True)
+
+
+def _parse_ku_line(line: str):
     """
-    逻辑：读取 risk_matching-1.xlsx
-
-    对齐 Notebook/避免 round 碰撞漏匹配：
-    - risk1_precise: list[float] 保留原始精确值
-    - risk1_rounded: set[float] 仅用于快速判断“是否命中两位小数”
-    - risk1_rounded_to_precise: dict[rounded -> list[precise]] 用于从 rounded 反查所有候选精确值
-      （关键：round 碰撞时不会被覆盖）
+    ku.txt: 每行形如  <smiles>\t<mz:intensity,mz:intensity,...>
+    返回 (smiles, mz_array, intensity_array_norm_0_100)
     """
-    excel_path = os.path.join(DATA_DIR, 'risk_matching-1.xlsx')
-    output_path = os.path.join(OUTPUT_DIR, 'risk_db.joblib')
-    if not os.path.exists(excel_path):
-        return
+    parts = line.strip().split("\t")
+    if len(parts) < 2:
+        return None
 
-    db = {
-        'positive': {
-            'risk1_precise': [],
-            'risk1_rounded': set(),
-            'risk1_rounded_to_precise': defaultdict(list),
-            'risk2': set(),
-            'risk3': set()
-        },
-        'negative': {
-            'risk1_precise': [],
-            'risk1_rounded': set(),
-            'risk1_rounded_to_precise': defaultdict(list),
-            'risk2': set(),
-            'risk3': set()
-        }
+    smiles = parts[0].strip()
+    peaks_raw = parts[1].strip().replace(";", ",")
+    items = [p for p in peaks_raw.split(",") if ":" in p]
+
+    mzs = []
+    ints = []
+    for it in items:
+        a, b = it.split(":", 1)
+        try:
+            mzs.append(float(a.strip()))
+            ints.append(float(b.strip()))
+        except ValueError:
+            continue
+
+    if not mzs:
+        return None
+
+    mz_arr = np.asarray(mzs, dtype=np.float32)
+    int_arr = np.asarray(ints, dtype=np.float32)
+
+    # 归一化到 0~100（保持与 notebook 的习惯一致）
+    mx = float(np.max(int_arr)) if len(int_arr) else 0.0
+    if mx > 0:
+        int_arr = (int_arr / mx) * 100.0
+
+    # 按 m/z 升序（方便后续快速匹配）
+    order = np.argsort(mz_arr)
+    return smiles, mz_arr[order], int_arr[order]
+
+
+def build_all_assets(
+        data_dir: str = "data",
+        out_dir: str = "data_processed",
+        risk_xlsx: str = "risk_matching-1.xlsx",
+        ku_txt: str = "ku.txt",
+) -> None:
+    """
+    ✅ 一个入口完成全部转换：
+      1) 风险库 joblib
+      2) 谱库 joblib
+      3) 统计量 joblib
+    """
+
+    paths = Paths(
+        base_dir="../data",
+        data_dir="../data",
+        out_dir="../data_processed"
+    )
+    _ensure_dir(paths.out_dir)
+
+    # -------------------------
+    # 1) 风险库
+    # -------------------------
+    risk_path = os.path.join(paths.data_dir, risk_xlsx)
+    if not os.path.exists(risk_path):
+        raise FileNotFoundError(f"风险库文件不存在: {risk_path}")
+
+    xls = pd.ExcelFile(risk_path)
+
+    # 只认 notebook 中的离子列
+    pos_cols = ["[M+H]+", "[M+Na]+", "[M+K]+"]
+    neg_cols = ["[M-H]-"]
+
+    # 风险表单映射：风险0 在 notebook 实际是 “risk1 精确阈值命中” 的一种输出逻辑
+    sheet_map = {
+        "风险0": "risk1",
+        "风险1": "risk1",
+        "风险2": "risk2",
+        "风险3": "risk3",
     }
 
-    xls = pd.ExcelFile(excel_path)
-    # Notebook：风险0 实际属于 risk1 的“精确阈值命中”，因此这里合并进 risk1 数据源
-    sheet_map = {'风险1': 'risk1', '风险2': 'risk2', '风险3': 'risk3', '风险0': 'risk1'}
+    def _empty_mode_db():
+        return {
+            "risk1_precise": [],
+            "risk1_rounded": set(),
+            "risk1_rounded_to_precise": defaultdict(list),
+            "risk2": set(),
+            "risk3": set(),
+        }
+
+    risk_db = {"positive": _empty_mode_db(), "negative": _empty_mode_db()}
 
     for sheet_name in xls.sheet_names:
-        mapped_key = sheet_map.get(sheet_name)
-        if not mapped_key:
+        mapped = sheet_map.get(sheet_name)
+        if mapped is None:
             continue
 
         df = pd.read_excel(xls, sheet_name=sheet_name)
 
-        for mode, cols in [
-            ('positive', ['[M+H]+', '[M+Na]+', '[M+K]+']),
-            ('negative', ['[M-H]-'])
-        ]:
+        for mode, cols in (("positive", pos_cols), ("negative", neg_cols)):
             for col in cols:
                 if col not in df.columns:
                     continue
 
-                masses = df[col].dropna().astype(float).tolist()
-                for m in masses:
-                    if mapped_key == 'risk1':
-                        m = float(m)
-                        rm = round(m, 2)
+                values = df[col].dropna().tolist()
+                for v in values:
+                    try:
+                        mz = float(v)
+                    except (TypeError, ValueError):
+                        continue
 
-                        db[mode]['risk1_precise'].append(m)
-                        db[mode]['risk1_rounded'].add(rm)
-                        db[mode]['risk1_rounded_to_precise'][rm].append(m)
-                    else:
-                        db[mode][mapped_key].add(round(float(m), 2))
+                    if mapped == "risk1":
+                        r2 = round(mz, 2)
+                        risk_db[mode]["risk1_precise"].append(mz)
+                        risk_db[mode]["risk1_rounded"].add(r2)
+                        risk_db[mode]["risk1_rounded_to_precise"][r2].append(mz)
+                    elif mapped in ("risk2", "risk3"):
+                        risk_db[mode][mapped].add(round(mz, 2))
 
-    # defaultdict 无法直接 joblib 友好展示，这里转成普通 dict
-    for mode in ['positive', 'negative']:
-        db[mode]['risk1_rounded_to_precise'] = dict(db[mode]['risk1_rounded_to_precise'])
+    # defaultdict -> dict（便于序列化与调试）
+    for mode in ("positive", "negative"):
+        risk_db[mode]["risk1_rounded_to_precise"] = dict(risk_db[mode]["risk1_rounded_to_precise"])
 
-    ensure_dir(OUTPUT_DIR)
-    joblib.dump(db, output_path)
-    print(f"✅ 风险库已构建（risk1_rounded=set + rounded->precise 列表），共处理 {len(xls.sheet_names)} 个表单。")
+    risk_out = os.path.join(paths.out_dir, "risk_db.joblib")
+    joblib.dump(risk_db, risk_out)
 
-
-def build_spectrum_db():
-    """彻底取消清洗逻辑，原模原样保留 ku.txt 的所有峰"""
-    txt_path = os.path.join(DATA_DIR, 'ku.txt')
-    output_path = os.path.join(OUTPUT_DIR, 'spectrum_db.joblib')
-    if not os.path.exists(txt_path):
-        return
+    # -------------------------
+    # 2) 谱库
+    # -------------------------
+    ku_path = os.path.join(paths.data_dir, ku_txt)
+    if not os.path.exists(ku_path):
+        raise FileNotFoundError(f"谱库文件不存在: {ku_path}")
 
     library = []
-    with open(txt_path, 'r', encoding='utf-8') as f:
+    with open(ku_path, "r", encoding="utf-8") as f:
         for line in f:
-            parts = line.strip().split('\t')
-            if len(parts) < 2:
+            if not line.strip() or line.lstrip().startswith("#"):
                 continue
-            name = parts[0]
-            try:
-                peaks = [p.split(':') for p in parts[1].replace(';', ',').split(',') if ':' in p]
-                mzs = np.array([float(p[0]) for p in peaks], dtype=float)
-                ints = np.array([float(p[1]) for p in peaks], dtype=float)
-                if len(ints) > 0:
-                    ints = (ints / np.max(ints)) * 100.0
-                library.append({'smiles': name, 'mz': mzs, 'intensities': ints})
-            except:
+            parsed = _parse_ku_line(line)
+            if parsed is None:
                 continue
+            smiles, mz_arr, int_arr = parsed
+            library.append({"smiles": smiles, "mz": mz_arr, "intensities": int_arr})
 
-    joblib.dump(library, output_path)
-    print("✅ 谱图库已原模原样转换完毕。")
+    spec_out = os.path.join(paths.out_dir, "spectrum_db.joblib")
+    joblib.dump(library, spec_out)
 
+    # -------------------------
+    # 3) 统计量（用于 MS2 特征）
+    # -------------------------
+    all_mz = []
+    max_intensity_mz = []
+    for entry in library:
+        mz = entry["mz"]
+        it = entry["intensities"]
+        if len(mz) == 0:
+            continue
+        all_mz.append(mz.astype(np.float64))
+        if len(it) > 0:
+            max_intensity_mz.append(float(mz[int(np.argmax(it))]))
 
-def update_stats():
-    spec_path = os.path.join(OUTPUT_DIR, 'spectrum_db.joblib')
-    output_path = os.path.join(OUTPUT_DIR, 'stats.joblib')
-    if not os.path.exists(spec_path):
-        return
-    lib = joblib.load(spec_path)
-    all_mz = [mz for entry in lib for mz in entry['mz']]
-    max_mzs = [entry['mz'][np.argmax(entry['intensities'])] for entry in lib]
+    if not all_mz:
+        raise RuntimeError("谱库为空，无法计算 stats.joblib")
+
+    all_mz_concat = np.concatenate(all_mz, axis=0)
+    mz_mean = float(np.mean(all_mz_concat))
+    mz_std = float(np.std(all_mz_concat)) or 1.0
+
+    if max_intensity_mz:
+        mx_mean = float(np.mean(max_intensity_mz))
+        mx_std = float(np.std(max_intensity_mz)) or 1.0
+    else:
+        mx_mean, mx_std = 0.0, 1.0
+
     stats = {
-        'mz_mean': float(np.mean(all_mz)),
-        'mz_std': float(np.std(all_mz)),
-        'max_intensity_mz_mean': float(np.mean(max_mzs)),
-        'max_intensity_mz_std': float(np.std(max_mzs))
+        "mz_mean": mz_mean,
+        "mz_std": mz_std,
+        "max_intensity_mz_mean": mx_mean,
+        "max_intensity_mz_std": mx_std,
     }
-    joblib.dump(stats, output_path)
-    print("✅ 统计数据更新完成。")
+
+    stats_out = os.path.join(paths.out_dir, "stats.joblib")
+    joblib.dump(stats, stats_out)
+
+    print("✅ 转换完成：")
+    print(f"  - {risk_out}")
+    print(f"  - {spec_out}")
+    print(f"  - {stats_out}")
+    print(f"  风险库 risk1_precise(positive) 条目数: {len(risk_db['positive']['risk1_precise'])}")
+    print(f"  谱库条目数: {len(library)}")
 
 
-if __name__ == '__main__':
-    build_risk_db()
-    build_spectrum_db()
-    update_stats()
+if __name__ == "__main__":
+    build_all_assets()
