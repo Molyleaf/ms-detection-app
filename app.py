@@ -4,6 +4,11 @@ from __future__ import annotations
 import os
 import uuid
 from dataclasses import dataclass
+from functools import lru_cache
+
+# 尽量在导入 onnxruntime 之前禁用 GPU 探测/可见性（容器环境更稳）
+os.environ.setdefault("CUDA_VISIBLE_DEVICES", "")
+os.environ.setdefault("ORT_DISABLE_GPU", "1")
 
 import numpy as np
 import pandas as pd
@@ -25,8 +30,12 @@ ASSETS = {
     "onnx": "models/model.onnx",
 }
 
-# 初始化 ONNX 推理（启动时加载，避免每次请求重复加载）
-CLASSIFIER = ONNXClassifier(model_path=ASSETS["onnx"], stats_joblib=ASSETS["stats"])
+# 原来这里是启动即加载：
+# CLASSIFIER = ONNXClassifier(model_path=ASSETS["onnx"], stats_joblib=ASSETS["stats"])
+# 改为懒加载，避免 worker 启动阶段被 onnxruntime 初始化卡死导致 gunicorn timeout
+@lru_cache(maxsize=1)
+def get_classifier() -> ONNXClassifier:
+    return ONNXClassifier(model_path=ASSETS["onnx"], stats_joblib=ASSETS["stats"])
 
 
 @dataclass(frozen=True)
@@ -192,8 +201,9 @@ def analyze_ms2():
         if not peaks:
             return "二级质谱 peaks 为空，无法判定", 400
 
-        # 3) ONNX 推理（带特征峰规则旁路）
-        pred = CLASSIFIER.predict_from_peaks(peaks)
+        # 3) ONNX 推理（懒加载，避免 worker 启动超时）
+        classifier = get_classifier()
+        pred = classifier.predict_from_peaks(peaks)
         label = pred["label"]
         prob = float(pred["probability"])
 
