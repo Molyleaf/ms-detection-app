@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en" class="sl-theme-light">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>{% block title %}Chemical Risk Analysis{% endblock %}</title>
+
+	<link rel="stylesheet" href="https://unpkg.shop.jd.com/@shoelace-style/shoelace@2.20.1/cdn/themes/light.css" />
+	<script type="module" src="https://unpkg.shop.jd.com/@shoelace-style/shoelace@2.20.1/cdn/shoelace-autoloader.js"></script>
+
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+	<style>
+        :not(:defined) { visibility: hidden; }
+
+        body {
+            background-color: #f3f4f6;
+            font-family: var(--sl-font-sans);
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            margin: 0;
+        }
+
+        .app-header {
+            background: white;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            padding: 1rem 0;
+            margin-bottom: 2rem;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 1.5rem;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .header-content {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        h1.app-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--sl-color-primary-600);
+            margin: 0;
+        }
+
+        .main-content {
+            flex: 1;
+            padding-bottom: 3rem;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 1.5rem;
+            color: var(--sl-color-neutral-500);
+            font-size: 0.875rem;
+        }
+
+        /* Utility for file inputs styled as buttons */
+        .file-input-wrapper {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+        }
+        .file-input-wrapper input[type=file] {
+            font-size: 100px;
+            position: absolute;
+            left: 0;
+            top: 0;
+            opacity: 0;
+            cursor: pointer;
+        }
+	</style>
+	{% block head_extra %}{% endblock %}
+</head>
+<body>
+
+<header class="app-header">
+	<div class="container header-content">
+		<sl-icon name="eyedropper" style="font-size: 1.5rem; color: var(--sl-color-primary-600);"></sl-icon>
+		<h1 class="app-title">Chemical Risk Analysis System</h1>
+	</div>
+</header>
+
+<main class="main-content container">
+	{% block content %}{% endblock %}
+</main>
+
+<footer class="footer">
+	<p>&copy; 2026 Zhejiang University. All rights reserved.</p>
+</footer>
+
+</body>
+</html>

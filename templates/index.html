@@ -1,34 +1,48 @@
-<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-	<meta charset="UTF-8">
-	<title>化合物风险分析系统</title>
-	<style>
-        body { font-family: sans-serif; max-width: 600px; margin: 50px auto; line-height: 1.6; }
-        .upload-card { border: 1px solid #ccc; padding: 20px; border-radius: 8px; background: #f9f9f9; }
-        .btn { background: #007bff; color: white; padding: 10px 20px; border: none; cursor: pointer; }
-	</style>
-</head>
-<body>
-<h1>化合物风险分析系统</h1>
-<div class="upload-card">
-	<h3>第一步：上传一级质谱数据 (MS1)</h3>
-	<p>请上传质谱原始结果文件。系统将自动解析 <strong>Mass</strong> 和 <strong>Intensity</strong> 列。</p>
+{% extends "base.html" %}
 
-	<form action="/upload_ms1" method="post" enctype="multipart/form-data">
-		<div style="margin-bottom: 15px;">
-			<label>选择文件 (.xlsx, .xls, .csv)：</label><br>
-			<input type="file" name="file" accept=".xlsx, .xls, .csv" required>
+{% block title %}Upload MS1 Data - Chemical Risk Analysis{% endblock %}
+
+{% block content %}
+<div style="max-width: 600px; margin: 0 auto;">
+	<sl-card class="card-overview">
+		<div slot="header">
+			<div style="display: flex; align-items: center; gap: 0.5rem;">
+				<sl-icon name="cloud-upload" style="font-size: 1.2rem;"></sl-icon>
+				<strong>Step 1: Upload MS1 Data</strong>
+			</div>
 		</div>
 
-		<div style="margin-bottom: 15px;">
-			<label>检测模式：</label><br>
-			<input type="radio" name="mode" value="positive" checked> 正离子 (Positive)
-			<input type="radio" name="mode" value="negative"> 负离子 (Negative)
-		</div>
+		<p style="color: var(--sl-color-neutral-600); margin-bottom: 1.5rem;">
+			Please upload the primary Mass Spectrometry (MS1) result file.
+			The system will automatically parse the <strong>Mass</strong> and <strong>Intensity</strong> columns.
+		</p>
 
-		<button type="submit" class="btn">开始自动化解析与筛选</button>
-	</form>
+		<form action="/upload_ms1" method="post" enctype="multipart/form-data">
+
+			<div style="margin-bottom: 1.5rem;">
+				<label for="file-upload" style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Select File (.xlsx, .xls, .csv)</label>
+				<sl-input type="file" name="file" id="file-upload" required accept=".xlsx, .xls, .csv">
+					<sl-icon name="file-earmark-spreadsheet" slot="prefix"></sl-icon>
+				</sl-input>
+			</div>
+
+			<div style="margin-bottom: 2rem;">
+				<label style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Detection Mode</label>
+				<sl-radio-group name="mode" value="positive">
+					<sl-radio value="positive">Positive Ion Mode</sl-radio>
+					<sl-radio value="negative">Negative Ion Mode</sl-radio>
+				</sl-radio-group>
+			</div>
+
+			<div style="border-top: 1px solid var(--sl-color-neutral-200); margin: 0 -1.2rem 1.2rem -1.2rem;"></div>
+
+			<div style="display: flex; justify-content: flex-end;">
+				<sl-button variant="primary" type="submit" loading-text="Processing...">
+					<sl-icon name="gear" slot="prefix"></sl-icon>
+					Analyze Data
+				</sl-button>
+			</div>
+		</form>
+	</sl-card>
 </div>
-</body>
-</html>
+{% endblock %}

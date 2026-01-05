@@ -1,72 +1,143 @@
-<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-  <meta charset="UTF-8">
-  <title>一级质谱分析结果</title>
-  <style>
-    .risk-danger { color: #d9534f; font-weight: bold; }
-    .risk-warning { color: #f0ad4e; font-weight: bold; }
-    .risk-success { color: #5cb85c; }
-    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-    th, td { padding: 10px; border: 1px solid #ddd; text-align: left; }
-    .action-cell { min-width: 260px; }
-  </style>
-</head>
-<body>
-<h1>一级质谱筛选结果 (模式: {{ mode }})</h1>
-<p>系统已按 Notebook 的同位素清理逻辑处理：<strong>Mass 升序 + 2Da 窗口聚类</strong>。当前展示 <strong>Output Risk</strong>（Risk0 也展示为 Risk1）。</p>
+{% extends "base.html" %}
 
-<table>
-  <thead>
-  <tr>
-    <th>质量 (Mass)</th>
-    <th>归一化强度</th>
-    <th>风险等级 (Output Risk)</th>
-    <th>库匹配质量</th>
-    <th class="action-cell">二级质谱 (MS2) 分析</th>
-  </tr>
-  </thead>
-  <tbody>
-  {% for peak in peaks %}
-  <tr>
-    <td>{{ "%.4f"|format(peak.Mass) }}</td>
-    <td>{{ "%.2f"|format(peak.Intensity) }}</td>
+{% block title %}MS1 Analysis Results{% endblock %}
 
-    {# 展示逻辑：只看 Output_Risk（对齐 Notebook：Risk0 也显示 Risk1） #}
-    {% if peak.Output_Risk == 'Risk1' %}
-    <td class="risk-danger">Risk1 高风险</td>
-    {% elif peak.Output_Risk == 'Risk2' %}
-    <td class="risk-warning">Risk2 高风险</td>
-    {% elif peak.Output_Risk == 'Risk3' %}
-    <td class="risk-success">未见异常 (Risk3)</td>
-    {% else %}
-    <td class="risk-success">安全 (Safe)</td>
-    {% endif %}
+{% block head_extra %}
+<style>
+  /* Modern Table Styling */
+  .data-table-wrapper {
+    background: white;
+    border-radius: var(--sl-border-radius-medium);
+    border: 1px solid var(--sl-color-neutral-200);
+    overflow: hidden;
+    overflow-x: auto;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+  }
 
-    <td>{{ "%.4f"|format(peak.Matched_Mass) if peak.Matched_Mass > 0 else "-" }}</td>
+  table.sl-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+  }
 
-    <td>
-      {% if peak.Output_Risk in ['Risk1', 'Risk2'] %}
-      <form action="/analyze_ms2" method="post" enctype="multipart/form-data" style="display: flex; gap: 6px;">
-        <input type="hidden" name="parent_mz" value="{{ peak.Mass }}">
-        <input type="hidden" name="actual_risk" value="{{ peak.Actual_Risk }}">
-        <input type="hidden" name="output_risk" value="{{ peak.Output_Risk }}">
-        <input type="hidden" name="matched_mass" value="{{ peak.Matched_Mass }}">
-        <input type="file" name="ms2_file" accept=".xlsx, .xls, .csv" required style="width: 150px;">
-        <button type="submit" style="background: #d9534f; color: white; border: none; padding: 5px 10px; cursor: pointer;">
-          上传判定
-        </button>
-      </form>
-      {% else %}
-      <span style="color: #999;">无需分析</span>
-      {% endif %}
-    </td>
-  </tr>
-  {% endfor %}
-  </tbody>
-</table>
+  table.sl-table th {
+    background: var(--sl-color-neutral-50);
+    color: var(--sl-color-neutral-700);
+    font-weight: 600;
+    text-align: left;
+    padding: 1rem;
+    border-bottom: 2px solid var(--sl-color-neutral-200);
+    white-space: nowrap;
+  }
 
-<br>
-<a href="/">返回重新上传 MS1</a>
-</body>
-</html>
+  table.sl-table td {
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--sl-color-neutral-200);
+    color: var(--sl-color-neutral-700);
+    vertical-align: middle;
+  }
+
+  table.sl-table tr:last-child td {
+    border-bottom: none;
+  }
+
+  table.sl-table tr:hover {
+    background-color: var(--sl-color-primary-50);
+  }
+
+  .upload-mini-form {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<sl-breadcrumb style="margin-bottom: 1.5rem;">
+  <sl-breadcrumb-item href="/">
+    <sl-icon slot="prefix" name="house"></sl-icon>
+    Home
+  </sl-breadcrumb-item>
+  <sl-breadcrumb-item>MS1 Results</sl-breadcrumb-item>
+</sl-breadcrumb>
+
+<div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 1rem;">
+  <div>
+    <h2 style="margin: 0; font-size: 1.5rem; color: var(--sl-color-neutral-900);">MS1 Screening Results</h2>
+    <div style="margin-top: 0.5rem; color: var(--sl-color-neutral-500); font-size: 0.9rem;">
+      <sl-tag variant="primary" size="small">{{ mode|capitalize }} Mode</sl-tag>
+      <span style="margin-left: 0.5rem;">Logic: Ascending Mass + 2Da Window Clustering</span>
+    </div>
+  </div>
+  <sl-button href="/" variant="default" size="small" outline>
+    <sl-icon slot="prefix" name="arrow-counterclockwise"></sl-icon>
+    New Upload
+  </sl-button>
+</div>
+
+<div class="data-table-wrapper">
+  <table class="sl-table">
+    <thead>
+    <tr>
+      <th>Mass (m/z)</th>
+      <th>Normalized Intensity</th>
+      <th>Output Risk</th>
+      <th>Library Match (m/z)</th>
+      <th style="min-width: 280px;">Deep Analysis (MS2)</th>
+    </tr>
+    </thead>
+    <tbody>
+    {% for peak in peaks %}
+    <tr>
+      <td style="font-family: var(--sl-font-mono);">{{ "%.4f"|format(peak.Mass) }}</td>
+      <td>
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+          <span style="width: 45px; text-align: right;">{{ "%.1f"|format(peak.Intensity) }}</span>
+          <sl-progress-bar value="{{ peak.Intensity }}" style="--height: 6px; width: 60px; --indicator-color: var(--sl-color-primary-400);"></sl-progress-bar>
+        </div>
+      </td>
+
+      <td>
+        {% if peak.Output_Risk == 'Risk1' %}
+        <sl-badge variant="danger" pill>Risk 1 (High)</sl-badge>
+        {% elif peak.Output_Risk == 'Risk2' %}
+        <sl-badge variant="warning" pill>Risk 2 (High)</sl-badge>
+        {% elif peak.Output_Risk == 'Risk3' %}
+        <sl-badge variant="success" pill>Risk 3 (Safe)</sl-badge>
+        {% else %}
+        <sl-badge variant="success" pill>Safe</sl-badge>
+        {% endif %}
+      </td>
+
+      <td style="color: var(--sl-color-neutral-500);">
+        {{ "%.4f"|format(peak.Matched_Mass) if peak.Matched_Mass > 0 else "—" }}
+      </td>
+
+      <td>
+        {% if peak.Output_Risk in ['Risk1', 'Risk2'] %}
+        <form action="/analyze_ms2" method="post" enctype="multipart/form-data" class="upload-mini-form">
+          <input type="hidden" name="parent_mz" value="{{ peak.Mass }}">
+          <input type="hidden" name="actual_risk" value="{{ peak.Actual_Risk }}">
+          <input type="hidden" name="output_risk" value="{{ peak.Output_Risk }}">
+          <input type="hidden" name="matched_mass" value="{{ peak.Matched_Mass }}">
+
+          <input type="file" name="ms2_file" accept=".xlsx, .xls, .csv" required style="font-size: 0.8rem; width: 180px;">
+
+          <sl-button type="submit" variant="danger" size="small" title="Upload MS2 & Analyze">
+            Analyze
+            <sl-icon slot="suffix" name="arrow-right"></sl-icon>
+          </sl-button>
+        </form>
+        {% else %}
+        <span style="color: var(--sl-color-neutral-400); font-size: 0.85rem; font-style: italic;">
+              No action required
+            </span>
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

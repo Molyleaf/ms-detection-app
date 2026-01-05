@@ -1,34 +1,87 @@
-<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-  <meta charset="UTF-8">
-  <title>分析报告</title>
-  <style>
-    .danger { color: #d9534f; }
-    .warning { color: #f0ad4e; }
-    .success { color: #5cb85c; }
-    .report-box { border: 2px solid #333; padding: 20px; margin: 20px 0; }
-  </style>
-</head>
-<body>
-<h1>二级质谱深度分析报告</h1>
-<div class="report-box">
-  <h3>母离子信息：m/z {{ parent_mz }}</h3>
-  <hr>
-  <p>判定结果：<strong class="{{ risk_class }}">{{ risk_text }}</strong></p>
-  <p>阳性概率：{{ prob }}%</p>
+{% extends "base.html" %}
+
+{% block title %}MS2 Analysis Report{% endblock %}
+
+{% block content %}
+<sl-breadcrumb style="margin-bottom: 1.5rem;">
+  <sl-breadcrumb-item href="/">Home</sl-breadcrumb-item>
+  <sl-breadcrumb-item href="javascript:history.back()">MS1 Results</sl-breadcrumb-item>
+  <sl-breadcrumb-item>MS2 Report</sl-breadcrumb-item>
+</sl-breadcrumb>
+
+<div style="max-width: 800px; margin: 0 auto;">
+
+  <div style="margin-bottom: 2rem;">
+    <h2 style="margin: 0; display: flex; align-items: center; gap: 0.5rem;">
+      Deep Analysis Report
+      <sl-tag size="small">Parent m/z: {{ parent_mz }}</sl-tag>
+    </h2>
+  </div>
+
+  <sl-card class="result-card" style="margin-bottom: 2rem; border-top: 4px solid {% if risk_class == 'danger' %}var(--sl-color-danger-500){% else %}var(--sl-color-success-500){% endif %};">
+    <div style="display: flex; flex-direction: column; gap: 1.5rem; text-align: center; padding: 1rem;">
+
+      <div>
+        {% if risk_class == 'danger' %}
+        <sl-icon name="exclamation-triangle" style="font-size: 4rem; color: var(--sl-color-danger-500); margin-bottom: 1rem;"></sl-icon>
+        <h1 style="margin: 0; color: var(--sl-color-danger-600);">High Risk Detected</h1>
+        {% else %}
+        <sl-icon name="check-circle" style="font-size: 4rem; color: var(--sl-color-success-500); margin-bottom: 1rem;"></sl-icon>
+        <h1 style="margin: 0; color: var(--sl-color-success-600);">Safe / No Risk Found</h1>
+        {% endif %}
+      </div>
+
+      <div style="max-width: 400px; margin: 0 auto; width: 100%;">
+        <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem; font-size: 0.9rem; font-weight: 600;">
+          <span>Confidence Probability</span>
+          <span>{{ prob }}%</span>
+        </div>
+        <sl-progress-bar value="{{ prob }}"
+                         variant="{% if risk_class == 'danger' %}danger{% else %}success{% endif %}"
+                         style="height: 10px;">
+        </sl-progress-bar>
+      </div>
+
+    </div>
+  </sl-card>
 
   {% if matches %}
-  <h4>谱图库回溯结果：</h4>
-  <ul>
+  <h3 style="margin-bottom: 1rem; color: var(--sl-color-neutral-700);">
+    <sl-icon name="database" style="margin-right: 0.5rem;"></sl-icon>
+    Library Traceback Results
+  </h3>
+
+  <div style="display: flex; flex-direction: column; gap: 0.75rem;">
     {% for match in matches %}
-    <li>SMILES: <code>{{ match.smiles }}</code> (相似度: {{ "%.4f"|format(match.score) }})</li>
+    <sl-details>
+      <div slot="summary" style="display: flex; align-items: center; justify-content: space-between; width: 100%; padding-right: 1rem;">
+        <span style="font-family: var(--sl-font-mono); font-weight: 600;">Match #{{ loop.index }}</span>
+        <sl-tag size="small" variant="primary">Similarity: {{ "%.2f"|format(match.score * 100) }}%</sl-tag>
+      </div>
+
+      <div style="padding: 1rem; background: var(--sl-color-neutral-50); border-radius: 4px; margin-top: 0.5rem;">
+        <strong style="color: var(--sl-color-neutral-600); font-size: 0.85rem;">SMILES Structure:</strong>
+        <div style="font-family: var(--sl-font-mono); word-break: break-all; margin-top: 0.25rem; color: var(--sl-color-neutral-800);">
+          {{ match.smiles }}
+        </div>
+      </div>
+    </sl-details>
     {% endfor %}
-  </ul>
+  </div>
+
   {% else %}
-  <p><em>未在谱图库中发现高度相似的已知结构。</em></p>
+  {% if risk_class == 'danger' %}
+  <sl-alert variant="warning" open>
+    <sl-icon slot="icon" name="exclamation-lg"></sl-icon>
+    <strong>No Library Matches Found</strong><br>
+    The model predicted high risk based on features, but no specific structure in the database matches closely.
+  </sl-alert>
   {% endif %}
+  {% endif %}
+
+  <div style="margin-top: 3rem; text-align: center;">
+    <sl-button href="/" variant="neutral" outline>Return to Home</sl-button>
+  </div>
+
 </div>
-<a href="javascript:history.back()">返回列表</a> | <a href="/">主页</a>
-</body>
-</html>
+{% endblock %}
