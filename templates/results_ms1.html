@@ -4,7 +4,6 @@
 
 {% block head_extra %}
 <style>
-  /* Modern Table Styling */
   .data-table-wrapper {
     background: white;
     border-radius: var(--sl-border-radius-medium);
@@ -37,18 +36,28 @@
     vertical-align: middle;
   }
 
-  table.sl-table tr:last-child td {
-    border-bottom: none;
-  }
-
   table.sl-table tr:hover {
     background-color: var(--sl-color-primary-50);
   }
 
-  .upload-mini-form {
-    display: flex;
-    gap: 0.5rem;
-    align-items: center;
+  /* 小型的文件输入框样式 */
+  .mini-file-input {
+    font-size: 0.8rem;
+    width: 200px;
+    border: 1px solid var(--sl-color-neutral-300);
+    border-radius: 4px;
+    padding: 2px;
+  }
+  .mini-file-input::file-selector-button {
+    background: var(--sl-color-neutral-200);
+    border: none;
+    padding: 2px 8px;
+    margin-right: 8px;
+    border-radius: 2px;
+    cursor: pointer;
+  }
+  .mini-file-input::file-selector-button:hover {
+    background: var(--sl-color-neutral-300);
   }
 </style>
 {% endblock %}
@@ -116,13 +125,13 @@
 
       <td>
         {% if peak.Output_Risk in ['Risk1', 'Risk2'] %}
-        <form action="/analyze_ms2" method="post" enctype="multipart/form-data" class="upload-mini-form">
+        <form action="/analyze_ms2" method="post" enctype="multipart/form-data" style="display: flex; gap: 0.5rem; align-items: center;">
           <input type="hidden" name="parent_mz" value="{{ peak.Mass }}">
           <input type="hidden" name="actual_risk" value="{{ peak.Actual_Risk }}">
           <input type="hidden" name="output_risk" value="{{ peak.Output_Risk }}">
           <input type="hidden" name="matched_mass" value="{{ peak.Matched_Mass }}">
 
-          <input type="file" name="ms2_file" accept=".xlsx, .xls, .csv" required style="font-size: 0.8rem; width: 180px;">
+          <input type="file" name="ms2_file" accept=".xlsx, .xls, .csv" required class="mini-file-input">
 
           <sl-button type="submit" variant="danger" size="small" title="Upload MS2 & Analyze">
             Analyze

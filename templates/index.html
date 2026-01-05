@@ -2,6 +2,51 @@
 
 {% block title %}Upload MS1 Data - Chemical Risk Analysis{% endblock %}
 
+{% block head_extra %}
+<style>
+    /* 美化原生文件上传控件，使其看起来像 Shoelace 组件 */
+    .file-input-styled {
+        display: block;
+        width: 100%;
+        padding: 0.5rem;
+        font-size: 1rem;
+        border: 1px solid var(--sl-input-border-color);
+        border-radius: var(--sl-input-border-radius-medium);
+        background-color: var(--sl-input-background-color);
+        color: var(--sl-input-color);
+        cursor: pointer;
+        transition: var(--sl-transition-fast) border-color;
+    }
+
+    .file-input-styled:hover {
+        border-color: var(--sl-input-border-color-hover);
+    }
+
+    .file-input-styled:focus {
+        outline: none;
+        border-color: var(--sl-input-border-color-focus);
+        box-shadow: 0 0 0 var(--sl-focus-ring-width) var(--sl-input-focus-ring-color);
+    }
+
+    /* 美化文件选择按钮部分 (Chrome/Edge/Firefox) */
+    .file-input-styled::file-selector-button {
+        margin-right: 1rem;
+        padding: 0.4rem 1rem;
+        border-radius: var(--sl-border-radius-medium);
+        background-color: var(--sl-color-primary-600);
+        color: white;
+        border: none;
+        cursor: pointer;
+        font-weight: 500;
+        transition: background-color 0.2s;
+    }
+
+    .file-input-styled::file-selector-button:hover {
+        background-color: var(--sl-color-primary-500);
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div style="max-width: 600px; margin: 0 auto;">
 	<sl-card class="card-overview">
@@ -21,9 +66,12 @@
 
 			<div style="margin-bottom: 1.5rem;">
 				<label for="file-upload" style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Select File (.xlsx, .xls, .csv)</label>
-				<sl-input type="file" name="file" id="file-upload" required accept=".xlsx, .xls, .csv">
-					<sl-icon name="file-earmark-spreadsheet" slot="prefix"></sl-icon>
-				</sl-input>
+
+				<input class="file-input-styled" type="file" name="file" id="file-upload" required accept=".xlsx, .xls, .csv">
+
+				<div style="margin-top: 0.5rem; font-size: 0.85rem; color: var(--sl-color-neutral-500);">
+					<sl-icon name="info-circle"></sl-icon> Supported formats: Excel, CSV
+				</div>
 			</div>
 
 			<div style="margin-bottom: 2rem;">
@@ -37,7 +85,7 @@
 			<div style="border-top: 1px solid var(--sl-color-neutral-200); margin: 0 -1.2rem 1.2rem -1.2rem;"></div>
 
 			<div style="display: flex; justify-content: flex-end;">
-				<sl-button variant="primary" type="submit" loading-text="Processing...">
+				<sl-button variant="primary" type="submit">
 					<sl-icon name="gear" slot="prefix"></sl-icon>
 					Analyze Data
 				</sl-button>
