@@ -1,96 +1,123 @@
 {% extends "base.html" %}
 
-{% block title %}Upload MS1 Data - Chemical Risk Analysis{% endblock %}
+{% block title %}Upload Data - ChemRisk AI{% endblock %}
 
 {% block head_extra %}
 <style>
-    /* 美化原生文件上传控件，使其看起来像 Shoelace 组件 */
-    .file-input-styled {
+    /* 漂亮的 Dropzone 样式 */
+    .upload-area {
+        position: relative;
+        border: 2px dashed var(--sl-color-primary-200);
+        border-radius: var(--sl-border-radius-large);
+        background: var(--sl-color-primary-50);
+        padding: 3rem 1.5rem;
+        text-align: center;
+        transition: all 0.2s ease;
+        cursor: pointer;
+    }
+
+    .upload-area:hover {
+        background: var(--sl-color-primary-100);
+        border-color: var(--sl-color-primary-400);
+        transform: translateY(-2px);
+    }
+
+    .upload-icon {
+        font-size: 3rem;
+        color: var(--sl-color-primary-400);
+        margin-bottom: 1rem;
         display: block;
+    }
+
+    /* 核心技巧：将原生 Input 绝对定位并透明化，覆盖整个区域 */
+    .file-input-hidden {
+        position: absolute;
+        top: 0;
+        left: 0;
         width: 100%;
-        padding: 0.5rem;
-        font-size: 1rem;
-        border: 1px solid var(--sl-input-border-color);
-        border-radius: var(--sl-input-border-radius-medium);
-        background-color: var(--sl-input-background-color);
-        color: var(--sl-input-color);
+        height: 100%;
+        opacity: 0;
         cursor: pointer;
-        transition: var(--sl-transition-fast) border-color;
+        z-index: 10;
     }
 
-    .file-input-styled:hover {
-        border-color: var(--sl-input-border-color-hover);
-    }
-
-    .file-input-styled:focus {
-        outline: none;
-        border-color: var(--sl-input-border-color-focus);
-        box-shadow: 0 0 0 var(--sl-focus-ring-width) var(--sl-input-focus-ring-color);
-    }
-
-    /* 美化文件选择按钮部分 (Chrome/Edge/Firefox) */
-    .file-input-styled::file-selector-button {
-        margin-right: 1rem;
-        padding: 0.4rem 1rem;
-        border-radius: var(--sl-border-radius-medium);
-        background-color: var(--sl-color-primary-600);
-        color: white;
-        border: none;
-        cursor: pointer;
-        font-weight: 500;
-        transition: background-color 0.2s;
-    }
-
-    .file-input-styled::file-selector-button:hover {
-        background-color: var(--sl-color-primary-500);
+    /* 文件名显示区 */
+    #file-name-display {
+        margin-top: 1rem;
+        font-size: 0.9rem;
+        color: var(--sl-color-success-600);
+        font-weight: 600;
+        min-height: 1.5rem;
     }
 </style>
+
+<script>
+    function updateFileName(input) {
+        const display = document.getElementById('file-name-display');
+        if (input.files && input.files.length > 0) {
+            display.innerHTML = `<sl-icon name="check-circle-fill" style="vertical-align: middle;"></sl-icon> Selected: ${input.files[0].name}`;
+            document.querySelector('.upload-area').style.borderColor = 'var(--sl-color-success-500)';
+            document.querySelector('.upload-area').style.background = 'var(--sl-color-success-50)';
+        } else {
+            display.textContent = '';
+        }
+    }
+</script>
 {% endblock %}
 
 {% block content %}
 <div style="max-width: 600px; margin: 0 auto;">
-	<sl-card class="card-overview">
-		<div slot="header">
-			<div style="display: flex; align-items: center; gap: 0.5rem;">
-				<sl-icon name="cloud-upload" style="font-size: 1.2rem;"></sl-icon>
-				<strong>Step 1: Upload MS1 Data</strong>
-			</div>
-		</div>
 
-		<p style="color: var(--sl-color-neutral-600); margin-bottom: 1.5rem;">
-			Please upload the primary Mass Spectrometry (MS1) result file.
-			The system will automatically parse the <strong>Mass</strong> and <strong>Intensity</strong> columns.
-		</p>
+	<div style="text-align: center; margin-bottom: 2rem;">
+		<h2 style="font-size: 1.8rem; margin-bottom: 0.5rem; color: var(--sl-color-neutral-800);">MS1 Data Screening</h2>
+		<p style="color: var(--sl-color-neutral-500);">Upload your primary mass spectrometry file to detect potential risks.</p>
+	</div>
 
+	<div class="card-base" style="padding: 2rem;">
 		<form action="/upload_ms1" method="post" enctype="multipart/form-data">
 
-			<div style="margin-bottom: 1.5rem;">
-				<label for="file-upload" style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Select File (.xlsx, .xls, .csv)</label>
+			<div style="margin-bottom: 2rem;">
+				<label style="display: block; margin-bottom: 0.8rem; font-weight: 600; color: var(--sl-color-neutral-700);">
+					Step 1: Upload File
+				</label>
 
-				<input class="file-input-styled" type="file" name="file" id="file-upload" required accept=".xlsx, .xls, .csv">
+				<div class="upload-area">
+					<input type="file" name="file" class="file-input-hidden" required accept=".xlsx, .xls, .csv" onchange="updateFileName(this)">
 
-				<div style="margin-top: 0.5rem; font-size: 0.85rem; color: var(--sl-color-neutral-500);">
-					<sl-icon name="info-circle"></sl-icon> Supported formats: Excel, CSV
+					<sl-icon name="cloud-arrow-up" class="upload-icon"></sl-icon>
+					<div style="font-size: 1.1rem; font-weight: 500; color: var(--sl-color-primary-700);">
+						Click or Drag file here
+					</div>
+					<div style="font-size: 0.85rem; color: var(--sl-color-neutral-500); margin-top: 0.5rem;">
+						Supports .xlsx, .xls, .csv
+					</div>
+					<div id="file-name-display"></div>
 				</div>
 			</div>
 
-			<div style="margin-bottom: 2rem;">
-				<label style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Detection Mode</label>
-				<sl-radio-group name="mode" value="positive">
-					<sl-radio value="positive">Positive Ion Mode</sl-radio>
-					<sl-radio value="negative">Negative Ion Mode</sl-radio>
-				</sl-radio-group>
+			<div style="margin-bottom: 2.5rem;">
+				<label style="display: block; margin-bottom: 0.8rem; font-weight: 600; color: var(--sl-color-neutral-700);">
+					Step 2: Ion Mode
+				</label>
+				<div style="display: flex; gap: 2rem;">
+					<sl-radio-group name="mode" value="positive">
+						<sl-radio value="positive">Positive (+)</sl-radio>
+						<sl-radio value="negative">Negative (-)</sl-radio>
+					</sl-radio-group>
+				</div>
 			</div>
 
-			<div style="border-top: 1px solid var(--sl-color-neutral-200); margin: 0 -1.2rem 1.2rem -1.2rem;"></div>
+			<sl-button variant="primary" type="submit" style="width: 100%;" size="large">
+				<sl-icon name="search" slot="prefix"></sl-icon>
+				Start Analysis
+			</sl-button>
 
-			<div style="display: flex; justify-content: flex-end;">
-				<sl-button variant="primary" type="submit">
-					<sl-icon name="gear" slot="prefix"></sl-icon>
-					Analyze Data
-				</sl-button>
-			</div>
 		</form>
-	</sl-card>
+	</div>
+
+	<div style="text-align: center; margin-top: 2rem; color: var(--sl-color-neutral-500); font-size: 0.85rem;">
+		<sl-icon name="shield-lock"></sl-icon> Your data is processed securely and not stored permanently.
+	</div>
+
 </div>
 {% endblock %}
