@@ -7,8 +7,7 @@
 
 	<link rel="stylesheet" href="
 https://unpkg.shop.jd.com/@shoelace-style/shoelace@2.20.1/cdn/themes/light.css" />
-	<script type="module" src="
-https://unpkg.shop.jd.com/@shoelace-style/shoelace@2.20.1/cdn/shoelace-autoloader.js"></script>
+	<script type="module" src="ttps://unpkg.shop.jd.com/@shoelace-style/shoelace@2.20.1/cdn/shoelace-autoloader.js"></script>
 
 	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
@@ -17,35 +16,34 @@ https://unpkg.shop.jd.com/@shoelace-style/shoelace@2.20.1/cdn/shoelace-autoloade
 
         /* Global Variables & Reset */
         :root {
-            --app-header-height: 60px; /* Reduced height for compactness */
+            --app-header-height: 60px; /*稍微减小头部高度以节省空间*/
             --app-footer-height: 50px;
-            --app-bg-gradient: linear-gradient(135deg, #f0f4f8 0%, #d9e2ec 100%);
-            --app-primary: #003F88; /* ZJU Blue approx */
+            --app-bg-gradient: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            --app-primary: var(--sl-color-primary-600);
+            --app-shadow-header: 0 4px 30px rgba(0, 0, 0, 0.05);
             --app-shadow-card: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-            --app-shadow-header: 0 2px 10px rgba(0, 0, 0, 0.05);
         }
 
         body {
             background: var(--app-bg-gradient);
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             color: var(--sl-color-neutral-800);
-            /* Viewport Fit Strategy: Fixed Layout */
-            height: 100vh;
-            margin: 0;
             display: flex;
             flex-direction: column;
-            overflow: hidden; /* Prevent body scroll */
+            height: 100vh; /* 强制全屏高度 */
+            overflow: hidden; /* 禁止body滚动 */
+            margin: 0;
         }
 
-        /* Compact Glassy Header */
+        /* Fixed Glassy Header */
         .app-header {
-            background: rgba(255, 255, 255, 0.9);
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
-            border-bottom: 1px solid rgba(0,0,0,0.05);
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-bottom: 1px solid rgba(255,255,255,0.3);
             box-shadow: var(--app-shadow-header);
             height: var(--app-header-height);
-            flex-shrink: 0; /* Don't shrink */
+            flex-shrink: 0; /* 防止头部被压缩 */
             display: flex;
             align-items: center;
             z-index: 1000;
@@ -54,7 +52,7 @@ https://unpkg.shop.jd.com/@shoelace-style/shoelace@2.20.1/cdn/shoelace-autoloade
         .container {
             max-width: 1200px;
             margin: 0 auto;
-            padding: 0 1.5rem;
+            padding: 0 2rem;
             width: 100%;
             box-sizing: border-box;
         }
@@ -69,44 +67,40 @@ https://unpkg.shop.jd.com/@shoelace-style/shoelace@2.20.1/cdn/shoelace-autoloade
         .brand {
             display: flex;
             align-items: center;
-            gap: 0.75rem;
             text-decoration: none;
             color: var(--sl-color-neutral-900);
         }
 
-        /* ZJU Logo Style */
-        .brand-logo {
-            height: 36px;
-            width: auto;
-            display: block;
-        }
-
+        /* Title Styling */
         h1.app-title {
-            font-size: 1.1rem;
+            font-size: 1.25rem;
             font-weight: 700;
-            letter-spacing: -0.01em;
+            letter-spacing: -0.02em;
             margin: 0;
-            color: var(--app-primary);
+            background: -webkit-linear-gradient(45deg, var(--sl-color-primary-700), var(--sl-color-primary-500));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
         }
 
-        /* Scrollable Main Content Area */
+        /* Main Content - Scrollable Area */
         .main-content {
-            flex: 1; /* Take remaining height */
-            overflow-y: auto; /* Scroll internally */
-            padding-top: 1.5rem;
+            flex: 1;
+            overflow-y: auto; /* 仅主内容区域滚动 */
+            padding-top: 2rem;
             padding-bottom: 2rem;
-            /* Smooth scrolling */
-            scroll-behavior: smooth;
+            position: relative;
         }
 
+        /* Footer */
         .footer {
             background: white;
             text-align: center;
-            padding: 0;
             height: var(--app-footer-height);
-            line-height: var(--app-footer-height);
+            display: flex;
+            align-items: center;
+            justify-content: center;
             color: var(--sl-color-neutral-500);
-            font-size: 0.75rem;
+            font-size: 0.8rem;
             border-top: 1px solid var(--sl-color-neutral-100);
             flex-shrink: 0;
         }
@@ -116,29 +110,13 @@ https://unpkg.shop.jd.com/@shoelace-style/shoelace@2.20.1/cdn/shoelace-autoloade
             background: white;
             border-radius: var(--sl-border-radius-large);
             box-shadow: var(--app-shadow-card);
-            border: 1px solid rgba(255,255,255,0.8);
+            border: 1px solid rgba(255,255,255,0.6);
             overflow: hidden;
         }
 
         .font-mono {
             font-family: 'SF Mono', 'Roboto Mono', Menlo, monospace;
             font-feature-settings: "tnum";
-            font-variant-numeric: tabular-nums;
-        }
-
-        /* Custom Scrollbar for Webkit */
-        .main-content::-webkit-scrollbar {
-            width: 8px;
-        }
-        .main-content::-webkit-scrollbar-track {
-            background: transparent;
-        }
-        .main-content::-webkit-scrollbar-thumb {
-            background-color: rgba(0,0,0,0.1);
-            border-radius: 4px;
-        }
-        .main-content::-webkit-scrollbar-thumb:hover {
-            background-color: rgba(0,0,0,0.2);
         }
 	</style>
 	{% block head_extra %}{% endblock %}
@@ -148,11 +126,7 @@ https://unpkg.shop.jd.com/@shoelace-style/shoelace@2.20.1/cdn/shoelace-autoloade
 <header class="app-header">
 	<div class="container header-content">
 		<a href="/" class="brand">
-			<img src="https://upload.wikimedia.org/wikipedia/en/a/a2/Zhejiang_University_Logo.svg" alt="ZJU Logo" class="brand-logo">
-			<div>
-				<h1 class="app-title">ChemRisk AI</h1>
-				<div style="font-size: 0.65rem; color: var(--sl-color-neutral-500); line-height: 1;">Zhejiang University</div>
-			</div>
+			<h1 class="app-title">ChemRisk AI</h1>
 		</a>
 
 		<sl-icon-button
@@ -160,7 +134,7 @@ https://unpkg.shop.jd.com/@shoelace-style/shoelace@2.20.1/cdn/shoelace-autoloade
 				label="Github"
 				href="https://github.com/Molyleaf/ms-detection-app"
 				target="_blank"
-				style="font-size: 1.2rem; color: var(--sl-color-neutral-600);">
+				style="font-size: 1.2rem;">
 		</sl-icon-button>
 	</div>
 </header>
@@ -170,9 +144,9 @@ https://unpkg.shop.jd.com/@shoelace-style/shoelace@2.20.1/cdn/shoelace-autoloade
 </main>
 
 <footer class="footer">
-	<div class="container">
-		&copy; 2026 <strong>Zhejiang University</strong>. All rights reserved.
-	</div>
+	<p>
+		Created by <strong>Zhejiang University</strong> &copy; 2026
+	</p>
 </footer>
 
 </body>
