@@ -5,9 +5,8 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<title>{% block title %}Chemical Risk Analysis{% endblock %}</title>
 
-	<link rel="stylesheet" href="
-https://unpkg.shop.jd.com/@shoelace-style/shoelace@2.20.1/cdn/themes/light.css" />
-	<script type="module" src="ttps://unpkg.shop.jd.com/@shoelace-style/shoelace@2.20.1/cdn/shoelace-autoloader.js"></script>
+	<link rel="stylesheet" href="https://unpkg.shop.jd.com/@shoelace-style/shoelace@2.20.1/cdn/themes/light.css" />
+	<script type="module" src="https://unpkg.shop.jd.com/@shoelace-style/shoelace@2.20.1/cdn/shoelace-autoloader.js"></script>
 
 	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
@@ -16,12 +15,18 @@ https://unpkg.shop.jd.com/@shoelace-style/shoelace@2.20.1/cdn/themes/light.css" 
 
         /* Global Variables & Reset */
         :root {
-            --app-header-height: 60px; /*稍微减小头部高度以节省空间*/
-            --app-footer-height: 50px;
+            --app-header-height: 60px; /* 稍微减小高度以节省空间 */
+            --app-footer-height: 60px;
             --app-bg-gradient: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-            --app-primary: var(--sl-color-primary-600);
-            --app-shadow-header: 0 4px 30px rgba(0, 0, 0, 0.05);
             --app-shadow-card: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --app-shadow-header: 0 4px 30px rgba(0, 0, 0, 0.05);
+        }
+
+        html, body {
+            height: 100%; /* 关键：强制占满视口 */
+            margin: 0;
+            padding: 0;
+            overflow: hidden; /* 防止 body 出现双重滚动条 */
         }
 
         body {
@@ -30,29 +35,26 @@ https://unpkg.shop.jd.com/@shoelace-style/shoelace@2.20.1/cdn/themes/light.css" 
             color: var(--sl-color-neutral-800);
             display: flex;
             flex-direction: column;
-            height: 100vh; /* 强制全屏高度 */
-            overflow: hidden; /* 禁止body滚动 */
-            margin: 0;
         }
 
-        /* Fixed Glassy Header */
+        /* Modern Glassy Header */
         .app-header {
-            background: rgba(255, 255, 255, 0.85);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
             border-bottom: 1px solid rgba(255,255,255,0.3);
             box-shadow: var(--app-shadow-header);
             height: var(--app-header-height);
-            flex-shrink: 0; /* 防止头部被压缩 */
             display: flex;
             align-items: center;
+            flex-shrink: 0; /* 防止 Header 被压缩 */
             z-index: 1000;
         }
 
         .container {
             max-width: 1200px;
             margin: 0 auto;
-            padding: 0 2rem;
+            padding: 0 1.5rem;
             width: 100%;
             box-sizing: border-box;
         }
@@ -61,17 +63,16 @@ https://unpkg.shop.jd.com/@shoelace-style/shoelace@2.20.1/cdn/themes/light.css" 
             display: flex;
             align-items: center;
             justify-content: space-between;
-            height: 100%;
         }
 
         .brand {
             display: flex;
             align-items: center;
+            gap: 0.75rem;
             text-decoration: none;
             color: var(--sl-color-neutral-900);
         }
 
-        /* Title Styling */
         h1.app-title {
             font-size: 1.25rem;
             font-weight: 700;
@@ -82,26 +83,28 @@ https://unpkg.shop.jd.com/@shoelace-style/shoelace@2.20.1/cdn/themes/light.css" 
             -webkit-text-fill-color: transparent;
         }
 
-        /* Main Content - Scrollable Area */
+        /* Scrollable Main Content Area */
         .main-content {
-            flex: 1;
-            overflow-y: auto; /* 仅主内容区域滚动 */
+            flex: 1; /* 占据剩余所有空间 */
+            overflow-y: auto; /* 仅在中间区域滚动 */
             padding-top: 2rem;
             padding-bottom: 2rem;
+            display: flex;
+            flex-direction: column;
             position: relative;
         }
 
-        /* Footer */
+        /* 针对内容较少的页面，让内容垂直居中 (可选，这里默认不做，保持顶部对齐更自然) */
+        /* .main-content > .container { margin: auto; } */
+
         .footer {
-            background: white;
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(5px);
             text-align: center;
-            height: var(--app-footer-height);
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            padding: 0.8rem;
             color: var(--sl-color-neutral-500);
             font-size: 0.8rem;
-            border-top: 1px solid var(--sl-color-neutral-100);
+            border-top: 1px solid rgba(255,255,255,0.4);
             flex-shrink: 0;
         }
 
@@ -117,6 +120,22 @@ https://unpkg.shop.jd.com/@shoelace-style/shoelace@2.20.1/cdn/themes/light.css" 
         .font-mono {
             font-family: 'SF Mono', 'Roboto Mono', Menlo, monospace;
             font-feature-settings: "tnum";
+            font-variant-numeric: tabular-nums;
+        }
+
+        /* Scrollbar styling for Webkit */
+        .main-content::-webkit-scrollbar {
+            width: 8px;
+        }
+        .main-content::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .main-content::-webkit-scrollbar-thumb {
+            background-color: rgba(0,0,0,0.1);
+            border-radius: 4px;
+        }
+        .main-content::-webkit-scrollbar-thumb:hover {
+            background-color: rgba(0,0,0,0.2);
         }
 	</style>
 	{% block head_extra %}{% endblock %}
@@ -134,18 +153,21 @@ https://unpkg.shop.jd.com/@shoelace-style/shoelace@2.20.1/cdn/themes/light.css" 
 				label="Github"
 				href="https://github.com/Molyleaf/ms-detection-app"
 				target="_blank"
-				style="font-size: 1.2rem;">
+				style="font-size: 1.25rem; color: var(--sl-color-neutral-600);">
 		</sl-icon-button>
 	</div>
 </header>
 
-<main class="main-content container">
-	{% block content %}{% endblock %}
+<main class="main-content">
+	<div class="container">
+		{% block content %}{% endblock %}
+	</div>
 </main>
 
 <footer class="footer">
-	<p>
-		Created by <strong>Zhejiang University</strong> &copy; 2026
+	<p style="margin: 0; line-height: 1.4;">
+		<strong>Zhejiang University</strong> &copy; 2026<br>
+		<span style="font-size: 0.75rem; opacity: 0.8;">Powered by Deep Learning & Mass Spectrometry</span>
 	</p>
 </footer>
 
