@@ -1,4 +1,3 @@
-# core/ms2.py
 import os
 from dataclasses import dataclass
 
@@ -40,22 +39,43 @@ def normalize_intensity_0_100(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def remove_isotope_peaks_keep_strongest(df: pd.DataFrame, mass_tolerance: float) -> pd.DataFrame:
+    """
+    同位素/近邻峰合并：±tolerance 内只保留强度最高峰。
+    性能修复：由 O(n^2) -> 近似 O(n log n)
+    """
     if df.empty:
         return df
-    df2 = df.sort_values("Intensity", ascending=False).reset_index(drop=True)
+
+    df2 = df.reset_index(drop=True).copy()
     mz = df2["Mass"].to_numpy(dtype=np.float64)
+    it = df2["Intensity"].to_numpy(dtype=np.float64)
+    n = int(mz.size)
+    if n <= 1:
+        return df2
 
-    keep = np.ones(len(df2), dtype=bool)
-    for i in range(len(df2)):
-        if not keep[i]:
+    order_int = np.argsort(-it)
+    order_mass = np.argsort(mz)
+    mz_sorted = mz[order_mass]
+
+    inv_mass = np.empty(n, dtype=np.int64)
+    inv_mass[order_mass] = np.arange(n, dtype=np.int64)
+
+    active = np.ones(n, dtype=bool)
+    keep_orig = np.zeros(n, dtype=bool)
+
+    tol = float(mass_tolerance)
+    for idx in order_int:
+        idx = int(idx)
+        pos = int(inv_mass[idx])
+        if not active[pos]:
             continue
-        for j in range(i + 1, len(df2)):
-            if not keep[j]:
-                continue
-            if abs(mz[j] - mz[i]) <= mass_tolerance:
-                keep[j] = False
 
-    out = df2.loc[keep].copy()
+        keep_orig[idx] = True
+        left = int(np.searchsorted(mz_sorted, mz[idx] - tol, side="left"))
+        right = int(np.searchsorted(mz_sorted, mz[idx] + tol, side="right"))
+        active[left:right] = False
+
+    out = df2.iloc[np.flatnonzero(keep_orig)].copy()
     return out.sort_values("Mass").reset_index(drop=True)
 
 
@@ -63,21 +83,21 @@ def to_peaks_string(df: pd.DataFrame, intensity_digits: int) -> str:
     if df.empty:
         return ""
     df2 = df.sort_values("Mass").reset_index(drop=True)
-    parts = []
-    for _, r in df2.iterrows():
-        parts.append(f"{float(r['Mass']):.4f}:{float(r['Intensity']):.{intensity_digits}f}")
-    return ",".join(parts)
+    mz = df2["Mass"].to_numpy(dtype=np.float64)
+    it = df2["Intensity"].to_numpy(dtype=np.float64)
+    fmt = f"{{:.4f}}:{{:.{intensity_digits}f}}"
+    return ",".join([fmt.format(float(m), float(i)) for m, i in zip(mz, it, strict=False)])
 
 
 def process_l2_excel_to_peaks(
         input_xlsx: str,
-        output_xlsx: str,
+        output_xlsx: str | None = None,
         cfg: MS2Config = MS2Config(),
 ) -> str:
     if not os.path.exists(input_xlsx):
         raise FileNotFoundError(f"找不到 L2 输入: {input_xlsx}")
 
-    raw = pd.read_excel(input_xlsx, sheet_name=0)
+    raw = pd.read_excel(input_xlsx, sheet_name=0, engine="openpyxl")
     mcol, icol = _find_mass_intensity_cols(raw)
 
     df = raw.rename(columns={mcol: "Mass", icol: "Intensity"})[["Mass", "Intensity"]].copy()
@@ -90,6 +110,10 @@ def process_l2_excel_to_peaks(
     df = remove_isotope_peaks_keep_strongest(df, cfg.mass_tolerance)
 
     peaks = to_peaks_string(df, cfg.intensity_digits)
-    out = pd.DataFrame({"peaks": [peaks]})
-    out.to_excel(output_xlsx, sheet_name="Formatted Output", index=False)
+
+    # 可选落盘（Web 默认不写）
+    if output_xlsx:
+        out = pd.DataFrame({"peaks": [peaks]})
+        out.to_excel(output_xlsx, sheet_name="Formatted Output", index=False)
+
     return peaks

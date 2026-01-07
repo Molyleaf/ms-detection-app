@@ -1,5 +1,5 @@
-# core/onnx_infer.py
 import os
+
 import joblib
 import numpy as np
 import onnxruntime as ort
@@ -19,7 +19,22 @@ class ONNXClassifier:
             raise FileNotFoundError(f"找不到 stats.joblib: {stats_joblib}")
 
         self.stats = joblib.load(stats_joblib)
-        self.sess = ort.InferenceSession(model_path, providers=["CPUExecutionProvider"])
+
+        # 性能/稳定性：限制 ORT 线程数，避免 gunicorn 多 worker 下线程过度订阅
+        intra = int(os.getenv("ORT_INTRA_OP_NUM_THREADS", "1"))
+        inter = int(os.getenv("ORT_INTER_OP_NUM_THREADS", "1"))
+
+        so = ort.SessionOptions()
+        so.intra_op_num_threads = max(intra, 1)
+        so.inter_op_num_threads = max(inter, 1)
+        so.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
+        so.execution_mode = ort.ExecutionMode.ORT_SEQUENTIAL
+
+        self.sess = ort.InferenceSession(
+            model_path,
+            sess_options=so,
+            providers=["CPUExecutionProvider"],
+        )
         self.input_names = [i.name for i in self.sess.get_inputs()]
         self.output_names = [o.name for o in self.sess.get_outputs()]
 
@@ -36,8 +51,7 @@ class ONNXClassifier:
         out = self.sess.run(self.output_names, feed)
         prob = float(np.asarray(out[0]).reshape(-1)[0])
 
-        # notebook 输出逻辑：若有任意阳性则 Positive，否则输出 1-avg_prob；
-        # 这里我们按单样本：prob>0.5 => Positive，否则 Negative 且概率=1-prob
+        # 单样本：prob>0.5 => Positive，否则 Negative 且概率=1-prob
         if prob > 0.5:
             return {"label": "Positive", "probability": prob, "via": "onnx"}
         return {"label": "Negative", "probability": 1.0 - prob, "via": "onnx"}

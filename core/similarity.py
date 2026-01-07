@@ -1,5 +1,5 @@
-# core/similarity.py
 import os
+import heapq
 from functools import lru_cache
 
 import joblib
@@ -10,10 +10,14 @@ import numpy as np
 def _load_spectrum_db(spectrum_db_joblib: str):
     if not os.path.exists(spectrum_db_joblib):
         raise FileNotFoundError(f"找不到谱库 joblib: {spectrum_db_joblib}")
-    lib = joblib.load(spectrum_db_joblib)
+
+    # 尽量用 mmap_mode 降低内存峰值（不支持就回退）
+    try:
+        lib = joblib.load(spectrum_db_joblib, mmap_mode="r")
+    except Exception:
+        lib = joblib.load(spectrum_db_joblib)
 
     # 防御性处理：确保每条 entry["mz"] 是 numpy array 且为升序
-    # （如果你的资产一定是排序好的，这里几乎零成本；不排序就会影响 searchsorted）
     for e in lib:
         mz = e.get("mz", None)
         if mz is None:
@@ -52,35 +56,57 @@ def topk_library_matches(
         tol: float = 0.2,
         top_k: int = 10,
 ):
+    """
+    性能修复：
+      - 不再 results 全量 append + sort（库大时慢且易 OOM）
+      - 用 heap 只保留 top_k
+    """
     lib = _load_spectrum_db(spectrum_db_joblib)
 
     # 解析 test peaks（只取 mz）
     mzs = []
     for it in peaks.replace(";", ",").split(","):
         it = it.strip()
+        if not it:
+            continue
         if ":" in it:
             a = it.split(":", 1)[0].strip()
             try:
                 mzs.append(float(a))
             except ValueError:
                 continue
-    test_mz = np.asarray(sorted(mzs), dtype=np.float32)
+        else:
+            # 兼容偶发没有强度的输入
+            try:
+                mzs.append(float(it))
+            except ValueError:
+                continue
 
-    results = []
+    test_mz = np.asarray(sorted(mzs), dtype=np.float32)
     denom = int(test_mz.size)
-    for entry in lib:
+
+    # (score, tie_breaker, payload)
+    heap: list[tuple[float, int, dict]] = []
+
+    for i, entry in enumerate(lib):
         lib_mz = entry["mz"]
         m = _match_count_similarity(test_mz, lib_mz, tol=tol)
         score = (m / denom) if denom else 0.0
-        results.append(
-            {
-                "smiles": entry.get("smiles", "N/A"),
-                "similarity": float(score),
-                "matches": int(m),
-                "test_peaks": int(denom),
-                "lib_peaks": int(lib_mz.size),
-            }
-        )
 
-    results.sort(key=lambda x: x["similarity"], reverse=True)
-    return results[:top_k]
+        payload = {
+            "smiles": entry.get("smiles", "N/A"),
+            "similarity": float(score),
+            "matches": int(m),
+            "test_peaks": int(denom),
+            "lib_peaks": int(lib_mz.size),
+        }
+
+        item = (float(score), int(i), payload)
+        if len(heap) < int(top_k):
+            heapq.heappush(heap, item)
+        else:
+            if item[0] > heap[0][0]:
+                heapq.heapreplace(heap, item)
+
+    heap.sort(key=lambda x: x[0], reverse=True)
+    return [x[2] for x in heap]

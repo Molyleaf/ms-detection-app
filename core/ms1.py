@@ -1,4 +1,3 @@
-# core/ms1.py
 import os
 from dataclasses import dataclass
 from functools import lru_cache
@@ -15,7 +14,6 @@ class MS1Config:
 
 
 def _find_mass_intensity_cols(df: pd.DataFrame):
-    cols = [str(c) for c in df.columns]
     mass_candidates = ["Mass", "mass", "m/z", "M/Z", "mz", "MASS"]
     int_candidates = ["Intensity", "intensity", "Int", "int", "INTENSITY", "Abundance"]
 
@@ -56,40 +54,57 @@ def normalize_intensity_0_100(df: pd.DataFrame) -> pd.DataFrame:
 def remove_isotope_peaks_keep_strongest(df: pd.DataFrame, mass_tolerance: float) -> pd.DataFrame:
     """
     逻辑：在 ±mass_tolerance 范围内，只保留强度最大的峰（同位素/近邻峰合并）。
-    为了稳定：先按强度降序遍历，删除邻域内更弱者。
+
+    性能修复：
+      旧实现双重 for 是 O(n^2)，峰多时会卡住并触发 gunicorn WORKER TIMEOUT。
+      新实现：强度优先 NMS + 质量轴 searchsorted 区间失活，近似 O(n log n)。
     """
     if df.empty:
         return df
 
-    df2 = df.sort_values("Intensity", ascending=False).reset_index(drop=True)
+    df2 = df.reset_index(drop=True).copy()
     mz = df2["Mass"].to_numpy(dtype=np.float64)
     it = df2["Intensity"].to_numpy(dtype=np.float64)
+    n = int(mz.size)
+    if n <= 1:
+        return df2
 
-    keep = np.ones(len(df2), dtype=bool)
-    for i in range(len(df2)):
-        if not keep[i]:
+    order_int = np.argsort(-it)   # 强度降序
+    order_mass = np.argsort(mz)   # 质量升序
+    mz_sorted = mz[order_mass]
+
+    inv_mass = np.empty(n, dtype=np.int64)
+    inv_mass[order_mass] = np.arange(n, dtype=np.int64)
+
+    active = np.ones(n, dtype=bool)      # mass-sorted 视角
+    keep_orig = np.zeros(n, dtype=bool)  # original 视角
+
+    tol = float(mass_tolerance)
+    for idx in order_int:
+        idx = int(idx)
+        pos = int(inv_mass[idx])
+        if not active[pos]:
             continue
-        for j in range(i + 1, len(df2)):
-            if not keep[j]:
-                continue
-            if abs(mz[j] - mz[i]) <= mass_tolerance:
-                # i 一定不弱于 j（因为按强度降序），所以删 j
-                keep[j] = False
 
-    out = df2.loc[keep].copy()
-    out = out.sort_values("Mass").reset_index(drop=True)
-    return out
+        keep_orig[idx] = True
+
+        left = int(np.searchsorted(mz_sorted, mz[idx] - tol, side="left"))
+        right = int(np.searchsorted(mz_sorted, mz[idx] + tol, side="right"))
+        active[left:right] = False
+
+    out = df2.iloc[np.flatnonzero(keep_orig)].copy()
+    return out.sort_values("Mass").reset_index(drop=True)
 
 
 def process_l1_excel(
         input_xlsx: str,
-        output_xlsx: str,
+        output_xlsx: str | None = None,
         cfg: MS1Config = MS1Config(),
 ) -> pd.DataFrame:
     if not os.path.exists(input_xlsx):
         raise FileNotFoundError(f"找不到输入文件: {input_xlsx}")
 
-    raw = pd.read_excel(input_xlsx, sheet_name=0)
+    raw = pd.read_excel(input_xlsx, sheet_name=0, engine="openpyxl")
     mcol, icol = _find_mass_intensity_cols(raw)
 
     df = raw.rename(columns={mcol: "Mass", icol: "Intensity"})[["Mass", "Intensity"]].copy()
@@ -103,15 +118,17 @@ def process_l1_excel(
     # 2) 删除 0 强度
     df = df[df["Intensity"] > 0].copy()
 
-    # 3) 2Da 同位素清理
+    # 3) 同位素清理
     df = remove_isotope_peaks_keep_strongest(df, cfg.mass_tolerance)
 
-    # 4) 低强度去除（>=1）
+    # 4) 低强度去除（>=min_intensity）
     df = df[df["Intensity"] >= cfg.min_intensity].copy()
     df = df.sort_values("Mass").reset_index(drop=True)
 
-    with pd.ExcelWriter(output_xlsx, engine="openpyxl") as w:
-        df.to_excel(w, sheet_name="Filtered Data", index=False)
+    # 可选落盘（Web 流程默认不写，提高速度）
+    if output_xlsx:
+        with pd.ExcelWriter(output_xlsx, engine="openpyxl") as w:
+            df.to_excel(w, sheet_name="Filtered Data", index=False)
 
     return df
 
@@ -139,7 +156,6 @@ def load_risk_db(joblib_path: str = "data_processed/risk_db.joblib"):
         r1_arr.sort()
         mode_db["risk1_precise_sorted"] = r1_arr
 
-        # rounded->precise 的候选也转成排序数组（候选一般不大，但做了更稳）
         r2p = mode_db.get("risk1_rounded_to_precise", {}) or {}
         r2p_arr = {}
         for k, arr in r2p.items():
@@ -151,7 +167,7 @@ def load_risk_db(joblib_path: str = "data_processed/risk_db.joblib"):
     return db
 
 
-def _nearest_in_sorted(arr: np.ndarray, x: float) -> tuple[float | None, float]:
+def _nearest_in_sorted(arr: np.ndarray | None, x: float) -> tuple[float | None, float]:
     """
     在已排序数组 arr 中找到离 x 最近的值，返回 (closest_value, abs_diff)。
     arr 为空时返回 (None, +inf)
@@ -188,7 +204,7 @@ def match_one_mz(mz_value: float, risk_mode_db: dict, threshold: float):
 
     risk1_rounded = risk_mode_db["risk1_rounded"]
 
-    # Risk0：改为“二分最近邻”，不再全表 diffs 扫描
+    # Risk0：二分最近邻（避免全表扫 diffs）
     r1_sorted = risk_mode_db.get("risk1_precise_sorted", None)
     closest, min_diff = _nearest_in_sorted(r1_sorted, mzv)
     if min_diff <= threshold and closest is not None:
@@ -247,15 +263,28 @@ def match_one_mz(mz_value: float, risk_mode_db: dict, threshold: float):
 
 
 def risk_match_l1(
-        processed_l1_xlsx: str,
-        output_xlsx: str,
+        processed_l1_xlsx: str | None = None,
+        output_xlsx: str | None = None,
         cfg: RiskConfig = RiskConfig(),
         risk_db_joblib: str = "data_processed/risk_db.joblib",
+        df_processed: pd.DataFrame | None = None,
 ) -> pd.DataFrame:
+    """
+    性能修复：
+      - 支持直接传 df_processed（避免再读一次 xlsx）
+      - output_xlsx 可选（Web 默认不写）
+      - 列式收集，比逐条 append dict 更快、更省内存
+    """
     risk_db = load_risk_db(risk_db_joblib)
     mode_db = risk_db[cfg.ion_mode]
 
-    df = pd.read_excel(processed_l1_xlsx, sheet_name=0)
+    if df_processed is not None:
+        df = df_processed
+    else:
+        if not processed_l1_xlsx:
+            raise ValueError("processed_l1_xlsx 与 df_processed 至少提供一个")
+        df = pd.read_excel(processed_l1_xlsx, sheet_name=0, engine="openpyxl")
+
     if "Mass" in df.columns:
         mz_series = df["Mass"]
     elif "Original m/z" in df.columns:
@@ -263,7 +292,6 @@ def risk_match_l1(
     else:
         mz_series = df.iloc[:, 0]
 
-    # 用“列式收集”比 append dict list 更快
     idx_list = []
     omz_list = []
     actual_list = []
@@ -303,7 +331,8 @@ def risk_match_l1(
         }
     )
 
-    with pd.ExcelWriter(output_xlsx, engine="openpyxl") as w:
-        out.to_excel(w, sheet_name=f"All Results ({cfg.ion_mode})", index=False)
+    if output_xlsx:
+        with pd.ExcelWriter(output_xlsx, engine="openpyxl") as w:
+            out.to_excel(w, sheet_name=f"All Results ({cfg.ion_mode})", index=False)
 
     return out

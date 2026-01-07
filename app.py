@@ -1,4 +1,3 @@
-# app.py
 from __future__ import annotations
 
 import os
@@ -9,6 +8,8 @@ from functools import lru_cache
 # 尽量在导入 onnxruntime 之前禁用 GPU 探测/可见性（容器环境更稳）
 os.environ.setdefault("CUDA_VISIBLE_DEVICES", "")
 os.environ.setdefault("ORT_DISABLE_GPU", "1")
+# 如果你不想看到 onnxruntime 的 GPU discovery warning，可提高日志级别（3=ERROR）
+os.environ.setdefault("ORT_LOG_SEVERITY_LEVEL", "3")
 
 import numpy as np
 import pandas as pd
@@ -30,11 +31,10 @@ ASSETS = {
     "onnx": "models/model.onnx",
 }
 
-# 原来这里是启动即加载：
-# CLASSIFIER = ONNXClassifier(model_path=ASSETS["onnx"], stats_joblib=ASSETS["stats"])
-# 改为懒加载，避免 worker 启动阶段被 onnxruntime 初始化卡死导致 gunicorn timeout
+
 @lru_cache(maxsize=1)
 def get_classifier() -> ONNXClassifier:
+    # 懒加载，避免 worker 启动阶段 onnxruntime 初始化卡死导致 gunicorn timeout
     return ONNXClassifier(model_path=ASSETS["onnx"], stats_joblib=ASSETS["stats"])
 
 
@@ -53,11 +53,6 @@ class UploadPaths:
 
 
 UPLOADS = UploadPaths()
-
-
-def _is_excel(filename: str) -> bool:
-    fn = filename.lower()
-    return fn.endswith(".xlsx") or fn.endswith(".xls")
 
 
 def _risk_label_for_ui(output_risk: str) -> tuple[str, str]:
@@ -84,6 +79,11 @@ def index():
 def upload_ms1():
     """
     Web 入口：上传 MS1 文件 -> 预处理 -> 风险匹配 -> 渲染 results_ms1.html
+
+    性能修复：
+      - 不再写入/再读回中间 xlsx（openpyxl 很慢）
+      - MS1 同位素清理由 O(n^2) 改为近似 O(n log n)
+      - 风险匹配直接使用 df_processed（避免重复 IO）
     """
     UPLOADS.ensure()
 
@@ -100,54 +100,51 @@ def upload_ms1():
         ms1_in = UPLOADS.new_file(f.filename)
         f.save(ms1_in)
 
-        # 2) MS1 预处理：归一化、同位素清理、低强度过滤
-        ms1_processed = UPLOADS.new_file("ms1_processed.xlsx")
+        # 2) MS1 预处理：归一化、同位素清理、低强度过滤（默认不落盘）
         df_clean = process_l1_excel(
             input_xlsx=ms1_in,
-            output_xlsx=ms1_processed,
+            output_xlsx=None,
             cfg=MS1Config(mass_tolerance=2.0, min_intensity=1.0),
         )
 
-        # 3) 风险匹配：读取处理后的文件顺序做匹配（与 notebook 行为一致）
-        risk_out = UPLOADS.new_file("risk_results.xlsx")
+        # 3) 风险匹配：直接用 df_processed，不写中间文件
         df_risk = risk_match_l1(
-            processed_l1_xlsx=ms1_processed,
-            output_xlsx=risk_out,
+            processed_l1_xlsx=None,
+            output_xlsx=None,
             cfg=RiskConfig(threshold=0.005, ion_mode=mode),
             risk_db_joblib=ASSETS["risk_db"],
+            df_processed=df_clean,
         )
 
-        # 4) 合并强度信息（df_risk 只有 m/z 风险字段；模板要显示 Intensity）
-        #    这里按 Index 顺序对齐：Index 从 1 开始，df_clean 行顺序与 risk_match_l1 一致
-        df_clean2 = df_clean.reset_index(drop=True).copy()
-        df_clean2["Index"] = np.arange(1, len(df_clean2) + 1)
+        # 4) 通过 Index 快速回填强度（避免 merge）
+        intens = df_clean["Intensity"].to_numpy(dtype=np.float64)
+        # Index 从 1 开始
+        intensity_map = np.zeros(len(intens) + 1, dtype=np.float64)
+        intensity_map[1:] = intens
 
-        merged = pd.merge(df_risk, df_clean2[["Index", "Intensity"]], on="Index", how="left")
-
-        # 5) 转成模板需要的字段名
         peaks_data = []
-        for _, row in merged.iterrows():
-            original_mz = float(row["Original m/z"])
-            intensity = row.get("Intensity", np.nan)
-            actual_risk = str(row.get("Actual Risk", "Low Risk"))
-            output_risk = str(row.get("Output Risk", "Low Risk"))
+        for (
+                idx, original_mz, actual_risk, output_risk, _matched_mz, matched_to, _match_type, _diff
+        ) in df_risk.itertuples(index=False, name=None):
+            original_mz_f = float(original_mz)
+            intensity = float(intensity_map[int(idx)]) if 0 < int(idx) < intensity_map.size else 0.0
 
-            matched_to = row.get("Matched to m/z", None)
             matched_mass = 0.0
             if isinstance(matched_to, (int, float)) and not pd.isna(matched_to):
                 matched_mass = float(matched_to)
 
-            peak = {
-                "Mass": original_mz,
-                "Intensity": float(intensity) if isinstance(intensity, (int, float)) and not pd.isna(intensity) else 0.0,
-                "Actual_Risk": actual_risk,
-                "Output_Risk": output_risk,
-                "Matched_Mass": matched_mass,
-            }
-            risk_text, risk_class = _risk_label_for_ui(output_risk)
-            peak["output_risk_text"] = risk_text
-            peak["output_risk_class"] = risk_class
-            peaks_data.append(peak)
+            risk_text, risk_class = _risk_label_for_ui(str(output_risk))
+            peaks_data.append(
+                {
+                    "Mass": original_mz_f,
+                    "Intensity": intensity,
+                    "Actual_Risk": str(actual_risk),
+                    "Output_Risk": str(output_risk),
+                    "Matched_Mass": matched_mass,
+                    "output_risk_text": risk_text,
+                    "output_risk_class": risk_class,
+                }
+            )
 
         return render_template("results_ms1.html", peaks=peaks_data, mode=mode)
 
@@ -159,18 +156,16 @@ def upload_ms1():
 def analyze_ms2():
     """
     MS2 分析入口：上传 MS2 文件（L2） -> 生成 peaks -> ONNX 推理 -> 阳性则谱库回溯
+
+    性能修复：
+      - MS2 peaks 生成不写中间 xlsx（默认）
+      - onnxruntime 线程数限制避免过度订阅
+      - 谱库 topk 用 heap，仅保留 top_k，避免 OOM
     """
     UPLOADS.ensure()
 
     parent_mz = request.form.get("parent_mz", "Unknown")
     actual_risk = request.form.get("actual_risk", "Low Risk")
-    matched_mass_raw = request.form.get("matched_mass", "0")
-
-    # 兜底解析 matched_mass（用于前端展示/调试）
-    try:
-        matched_mass = float(matched_mass_raw)
-    except Exception:
-        matched_mass = 0.0
 
     ms2_file = request.files.get("ms2_file")
     if not ms2_file or ms2_file.filename == "":
@@ -192,16 +187,15 @@ def analyze_ms2():
             )
 
         # 2) MS2 预处理：输出 peaks 字符串（mass:intensity,...）
-        ms2_processed = UPLOADS.new_file("ms2_processed.xlsx")
         peaks = process_l2_excel_to_peaks(
             input_xlsx=ms2_in,
-            output_xlsx=ms2_processed,
+            output_xlsx=None,
             cfg=MS2Config(mass_tolerance=2.0, intensity_digits=2),
         )
         if not peaks:
             return "二级质谱 peaks 为空，无法判定", 400
 
-        # 3) ONNX 推理（懒加载，避免 worker 启动超时）
+        # 3) ONNX 推理（懒加载）
         classifier = get_classifier()
         pred = classifier.predict_from_peaks(peaks)
         label = pred["label"]
@@ -224,7 +218,6 @@ def analyze_ms2():
                 tol=0.2,
                 top_k=10,
             )
-            # 模板期望字段：match.smiles / match.score
             matches = [{"smiles": r["smiles"], "score": r["similarity"]} for r in top]
 
         return render_template(
