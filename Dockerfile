@@ -29,4 +29,4 @@ COPY app.py .
 RUN mkdir -p /tmp && chmod 777 /tmp
 
 EXPOSE 5000
-CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "2", "--timeout", "120", "app:app"]
+CMD ["gunicorn","--bind", "0.0.0.0:5000","--worker-class", "gthread","--threads", "4","--workers", "1","--timeout", "300","--keep-alive", "2","--max-requests", "200","--max-requests-jitter", "50","app:app"]

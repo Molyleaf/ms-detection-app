@@ -3,4 +3,4 @@ pandas
 flask
 werkzeug
 joblib
-onnxruntime
+onnxruntime-openvino
