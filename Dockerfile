@@ -7,11 +7,11 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 
 # 更新源并安装必要库
-RUN rm -f /etc/apt/sources.list && rm -rf /etc/apt/sources.list.d/
-COPY sources.list /etc/apt/sources.list
-RUN apt-get update && apt-get install -y \
-    build-essential \
-    && rm -rf /var/lib/apt/lists/*
+# RUN rm -f /etc/apt/sources.list && rm -rf /etc/apt/sources.list.d/
+# COPY sources.list /etc/apt/sources.list
+# RUN apt-get update && apt-get install -y \
+#     build-essential \
+#     && rm -rf /var/lib/apt/lists/*
 
 # 安装依赖
 COPY requirements.txt .

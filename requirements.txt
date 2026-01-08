@@ -4,3 +4,4 @@ flask
 werkzeug
 joblib
 onnxruntime-openvino
+gunicorn
