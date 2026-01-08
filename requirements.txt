@@ -1,9 +1,6 @@
-flask
-pandas
 numpy==2.2.6
-joblib
-openpyxl
-scikit-learn
+pandas
+flask
 werkzeug
-gunicorn
+joblib
 onnxruntime
