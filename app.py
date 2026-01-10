@@ -13,7 +13,7 @@ os.environ.setdefault("ORT_LOG_SEVERITY_LEVEL", "3")
 
 import numpy as np
 import pandas as pd
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, redirect, url_for
 from werkzeug.utils import secure_filename
 
 from core.ms1 import MS1Config, RiskConfig, process_l1_excel, risk_match_l1
@@ -21,7 +21,9 @@ from core.ms2 import MS2Config, process_l2_excel_to_peaks
 from core.onnx_infer import ONNXClassifier
 from core.similarity import topk_library_matches
 
-app = Flask(__name__)
+URL_PREFIX = "/viagra-detection"
+
+app = Flask(__name__, static_url_path=f"{URL_PREFIX}/static")
 
 # 运行时依赖的资产文件（Docker 内保持这些路径存在即可）
 ASSETS = {
@@ -71,11 +73,15 @@ def _risk_label_for_ui(output_risk: str) -> tuple[str, str]:
 
 
 @app.route("/")
+def root():
+    # 兼容旧的根路径访问：跳转到新前缀
+    return redirect(url_for("index"))
+
+@app.route(f"{URL_PREFIX}", strict_slashes=False)
+@app.route(f"{URL_PREFIX}/", strict_slashes=False)
 def index():
     return render_template("index.html")
-
-
-@app.route("/upload_ms1", methods=["POST"])
+@app.route(f"{URL_PREFIX}/upload_ms1", methods=["POST"])
 def upload_ms1():
     """
     Web 入口：上传 MS1 文件 -> 预处理 -> 风险匹配 -> 渲染 results_ms1.html
@@ -152,7 +158,7 @@ def upload_ms1():
         return f"处理失败: {e}", 500
 
 
-@app.route("/analyze_ms2", methods=["POST"])
+@app.route(f"{URL_PREFIX}/analyze_ms2", methods=["POST"])
 def analyze_ms2():
     """
     MS2 分析入口：上传 MS2 文件（L2） -> 生成 peaks -> ONNX 推理 -> 阳性则谱库回溯

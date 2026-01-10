@@ -4,7 +4,7 @@
 
 {% block content %}
 <sl-breadcrumb style="margin-bottom: 1.5rem;">
-  <sl-breadcrumb-item href="/">Home</sl-breadcrumb-item>
+  <sl-breadcrumb-item href="{{ url_for('index') }}">Home</sl-breadcrumb-item>
   <sl-breadcrumb-item href="javascript:history.back()">MS1 Results</sl-breadcrumb-item>
   <sl-breadcrumb-item>MS2 Report</sl-breadcrumb-item>
 </sl-breadcrumb>
@@ -80,7 +80,7 @@
   {% endif %}
 
   <div style="margin-top: 3rem; text-align: center;">
-    <sl-button href="/" variant="neutral" outline>Return to Home</sl-button>
+    <sl-button href="{{ url_for('index') }}" variant="neutral" outline>Return to Home</sl-button>
   </div>
 
 </div>

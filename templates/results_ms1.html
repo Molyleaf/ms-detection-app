@@ -64,7 +64,7 @@
 
 {% block content %}
 <sl-breadcrumb style="margin-bottom: 1.5rem;">
-  <sl-breadcrumb-item href="/">
+  <sl-breadcrumb-item href="{{ url_for('index') }}">
     <sl-icon slot="prefix" name="house"></sl-icon>
     Home
   </sl-breadcrumb-item>
@@ -79,7 +79,7 @@
       <span style="margin-left: 0.5rem;">Logic: Ascending Mass + 2Da Window Clustering</span>
     </div>
   </div>
-  <sl-button href="/" variant="default" size="small" outline>
+  <sl-button href="{{ url_for('index') }}" variant="default" size="small" outline>
     <sl-icon slot="prefix" name="arrow-counterclockwise"></sl-icon>
     New Upload
   </sl-button>
@@ -125,7 +125,7 @@
 
       <td>
         {% if peak.Output_Risk in ['Risk1', 'Risk2'] %}
-        <form action="/analyze_ms2" method="post" enctype="multipart/form-data" style="display: flex; gap: 0.5rem; align-items: center;">
+        <form action="{{ url_for('analyze_ms2') }}" method="post" enctype="multipart/form-data" style="display: flex; gap: 0.5rem; align-items: center;">
           <input type="hidden" name="parent_mz" value="{{ peak.Mass }}">
           <input type="hidden" name="actual_risk" value="{{ peak.Actual_Risk }}">
           <input type="hidden" name="output_risk" value="{{ peak.Output_Risk }}">
