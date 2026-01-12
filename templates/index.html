@@ -69,7 +69,7 @@
 <div style="max-width: 600px; margin: 0 auto;">
 
 	<div style="text-align: center; margin-bottom: 2rem;">
-		<h2 style="font-size: 1.8rem; margin-bottom: 0.5rem; color: var(--sl-color-neutral-800);">MS1 Data Screening</h2>
+		<h2 style="font-size: 1.0rem; margin-bottom: 0.5rem; color: var(--sl-color-neutral-800);">MS1 Data Screening</h2>
 		<p style="color: var(--sl-color-neutral-500);">Upload your primary mass spectrometry file to detect potential risks.</p>
 	</div>
 
@@ -77,9 +77,6 @@
 		<form action="{{ url_for('upload_ms1') }}" method="post" enctype="multipart/form-data">
 
 			<div style="margin-bottom: 2rem;">
-				<label style="display: block; margin-bottom: 0.8rem; font-weight: 600; color: var(--sl-color-neutral-700);">
-					Step 1: Upload File
-				</label>
 
 				<div class="upload-area">
 					<input type="file" name="file" class="file-input-hidden" required accept=".xlsx, .xls, .csv" onchange="updateFileName(this)">
@@ -113,10 +110,6 @@
 			</sl-button>
 
 		</form>
-	</div>
-
-	<div style="text-align: center; margin-top: 2rem; color: var(--sl-color-neutral-500); font-size: 0.85rem;">
-		<sl-icon name="shield-lock"></sl-icon> Your data is processed securely and not stored permanently.
 	</div>
 
 </div>

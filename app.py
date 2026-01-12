@@ -21,7 +21,7 @@ from core.ms2 import MS2Config, process_l2_excel_to_peaks
 from core.onnx_infer import ONNXClassifier
 from core.similarity import topk_library_matches
 
-URL_PREFIX = "/viagra-detection"
+URL_PREFIX = "/TransIA"
 
 app = Flask(__name__, static_url_path=f"{URL_PREFIX}/static")
 
