@@ -61,7 +61,7 @@ def _parse_ku_line(line: str):
 def build_all_assets(
         data_dir: str = "data",
         out_dir: str = "data_processed",
-        risk_xlsx: str = "risk_matching-0108.xlsx",
+        risk_xlsx: str = "risk_matching-0112.xlsx",
         ku_txt: str = "ku.txt",
 ) -> None:
     """
