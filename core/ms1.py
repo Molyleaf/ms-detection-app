@@ -1,3 +1,4 @@
+# core/ms1.py
 import os
 from dataclasses import dataclass
 from functools import lru_cache
@@ -138,7 +139,12 @@ def process_l1_excel(
 # -----------------------------
 @dataclass(frozen=True)
 class RiskConfig:
+    # Risk0: |Δm/z| <= threshold
     threshold: float = 0.005
+    # Risk1: threshold < |Δm/z| <= risk1_threshold
+    risk1_threshold: float = 0.01
+    # Risk2/Risk3: |Δm/z| <= risk23_threshold
+    risk23_threshold: float = 0.01
     ion_mode: str = "positive"  # "positive" or "negative"
 
 
@@ -163,6 +169,17 @@ def load_risk_db(joblib_path: str = "data_processed/risk_db.joblib"):
             a.sort()
             r2p_arr[float(k)] = a
         mode_db["risk1_rounded_to_precise_sorted"] = r2p_arr
+
+        # Risk2/Risk3：预编译成排序数组，后续用二分最近邻 + 0.01Da 阈值匹配
+        r2 = mode_db.get("risk2", []) or []
+        r2_arr = np.asarray(list(r2), dtype=np.float64)
+        r2_arr.sort()
+        mode_db["risk2_sorted"] = r2_arr
+
+        r3 = mode_db.get("risk3", []) or []
+        r3_arr = np.asarray(list(r3), dtype=np.float64)
+        r3_arr.sort()
+        mode_db["risk3_sorted"] = r3_arr
 
     return db
 
@@ -191,65 +208,77 @@ def _nearest_in_sorted(arr: np.ndarray | None, x: float) -> tuple[float | None, 
     return best_v, best_d
 
 
-def match_one_mz(mz_value: float, risk_mode_db: dict, threshold: float):
+def match_one_mz(
+        mz_value: float,
+        risk_mode_db: dict,
+        risk0_threshold: float,
+        risk1_threshold: float,
+        risk23_threshold: float,
+):
     """
-    notebook 逻辑复刻：
-      - Risk0：与 risk1_precise 任意值差 <= threshold（输出列仍显示 Risk1）
-      - Risk1：两位小数命中 risk1_rounded，但差 > threshold
-      - Risk2/3：两位小数命中对应集合
+    L1 风险匹配规则（按你的新口径）：
+      - Risk0：|Δm/z| <= 0.005 Da（输出列仍显示 Risk1）
+      - Risk1：0.005 < |Δm/z| <= 0.01 Da（输出列显示 Risk1）
+      - Risk2 / Risk3：与对应库条目在 0.01 Da 范围内（不再用“两位小数相同”）
       - 否则 Low Risk
     """
     mzv = float(mz_value)
     mz_rounded = round(mzv, 2)
 
-    risk1_rounded = risk_mode_db["risk1_rounded"]
-
-    # Risk0：二分最近邻（避免全表扫 diffs）
+    # -----------------
+    # Risk0 / Risk1：对 risk1_precise 做最近邻匹配
+    # -----------------
     r1_sorted = risk_mode_db.get("risk1_precise_sorted", None)
     closest, min_diff = _nearest_in_sorted(r1_sorted, mzv)
-    if min_diff <= threshold and closest is not None:
-        return {
-            "Actual Risk": "Risk0",
-            "Output Risk": "Risk1",
-            "Matched m/z": mz_rounded,
-            "Matched to m/z": float(closest),
-            "Match Type": f"精确匹配(阈值={threshold}Da)",
-            "Difference (Da)": float(min_diff),
-        }
 
-    # Risk1：两位小数命中，但排除 Risk0 情况（diff > threshold）
-    if mz_rounded in risk1_rounded:
-        r2p_sorted = risk_mode_db.get("risk1_rounded_to_precise_sorted", {})
-        candidates = r2p_sorted.get(float(mz_rounded), None)
-        closest2, diff2 = _nearest_in_sorted(candidates, mzv)
-        if closest2 is not None and diff2 > threshold:
+    if closest is not None:
+        if min_diff <= float(risk0_threshold):
+            return {
+                "Actual Risk": "Risk0",
+                "Output Risk": "Risk1",
+                "Matched m/z": mz_rounded,
+                "Matched to m/z": float(closest),
+                "Match Type": f"精确匹配(阈值={float(risk0_threshold)}Da)",
+                "Difference (Da)": float(min_diff),
+            }
+        if min_diff <= float(risk1_threshold):
             return {
                 "Actual Risk": "Risk1",
                 "Output Risk": "Risk1",
                 "Matched m/z": mz_rounded,
-                "Matched to m/z": float(closest2),
-                "Match Type": "近似匹配(两位小数相同)",
-                "Difference (Da)": float(diff2),
+                "Matched to m/z": float(closest),
+                "Match Type": f"精确匹配(阈值={float(risk1_threshold)}Da)",
+                "Difference (Da)": float(min_diff),
             }
 
-    if mz_rounded in risk_mode_db["risk2"]:
-        return {
-            "Actual Risk": "Risk2",
-            "Output Risk": "Risk2",
-            "Matched m/z": mz_rounded,
-            "Matched to m/z": mz_rounded,
-            "Match Type": "两位小数匹配",
-            "Difference (Da)": 0.0,
-        }
+    # -----------------
+    # Risk2 / Risk3：0.01Da 窗口内最近邻匹配（替换原“两位小数匹配”）
+    # -----------------
+    r2_sorted = risk_mode_db.get("risk2_sorted", None)
+    r3_sorted = risk_mode_db.get("risk3_sorted", None)
 
-    if mz_rounded in risk_mode_db["risk3"]:
+    c2, d2 = _nearest_in_sorted(r2_sorted, mzv)
+    c3, d3 = _nearest_in_sorted(r3_sorted, mzv)
+
+    tol23 = float(risk23_threshold)
+    best = None
+    if c2 is not None and d2 <= tol23:
+        best = ("Risk2", float(c2), float(d2))
+    if c3 is not None and d3 <= tol23:
+        if best is None or d3 < best[2]:
+            best = ("Risk3", float(c3), float(d3))
+
+    if best is not None:
+        actual = best[0]
+        matched_to = best[1]
+        diff = best[2]
         return {
-            "Actual Risk": "Risk3",
-            "Output Risk": "Risk3",
+            "Actual Risk": actual,
+            "Output Risk": actual,
             "Matched m/z": mz_rounded,
-            "Matched to m/z": mz_rounded,
-            "Match Type": "两位小数匹配",
-            "Difference (Da)": 0.0,
+            "Matched to m/z": float(matched_to),
+            "Match Type": f"精确匹配(阈值={tol23}Da)",
+            "Difference (Da)": float(diff),
         }
 
     return {
@@ -260,6 +289,7 @@ def match_one_mz(mz_value: float, risk_mode_db: dict, threshold: float):
         "Match Type": "无匹配",
         "Difference (Da)": None,
     }
+
 
 
 def risk_match_l1(
@@ -307,7 +337,7 @@ def risk_match_l1(
         except (TypeError, ValueError):
             continue
 
-        r = match_one_mz(mzv, mode_db, cfg.threshold)
+        r = match_one_mz(mzv, mode_db, cfg.threshold, cfg.risk1_threshold, cfg.risk23_threshold)
 
         idx_list.append(idx)
         omz_list.append(float(mzv))

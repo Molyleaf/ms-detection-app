@@ -215,16 +215,18 @@ def analyze_ms2():
             risk_text, risk_class = "未见异常", "success"
             prob_display = round(prob * 100.0, 2) if prob <= 1.0 else 0.0
 
-        # 5) 阳性则谱库回溯（Top-10）
-        matches = []
-        if label == "Positive":
-            top = topk_library_matches(
-                peaks=peaks,
-                spectrum_db_joblib=ASSETS["spectrum_db"],
-                tol=0.2,
-                top_k=10,
-            )
-            matches = [{"smiles": r["smiles"], "score": r["similarity"]} for r in top]
+        # 5) 谱库回溯（结构匹配：无论最高相似度多少，都至少展示 5 个候选）
+        top = topk_library_matches(
+            peaks=peaks,
+            spectrum_db_joblib=ASSETS["spectrum_db"],
+            tol=0.2,
+            top_k=10,
+        )
+        matches = [{"smiles": r.get("smiles", "N/A"), "score": r.get("similarity", 0.0)} for r in top]
+
+        # 若谱库条目不足，做占位（保证前端至少渲染 5 行）
+        while len(matches) < 5:
+            matches.append({"smiles": "N/A", "score": 0.0})
 
         return render_template(
             "results_ms2.html",

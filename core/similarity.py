@@ -1,3 +1,4 @@
+# core/similarity.py
 import os
 import heapq
 from functools import lru_cache
@@ -61,7 +62,11 @@ def topk_library_matches(
       - 不再 results 全量 append + sort（库大时慢且易 OOM）
       - 用 heap 只保留 top_k
     """
+    # 结构匹配：至少返回 5 个候选（即使相似度很低也照样列出）
+    top_k = max(int(top_k), 5)
+
     lib = _load_spectrum_db(spectrum_db_joblib)
+
 
     # 解析 test peaks（只取 mz）
     mzs = []
