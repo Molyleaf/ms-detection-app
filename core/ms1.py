@@ -10,7 +10,8 @@ import pandas as pd
 
 @dataclass(frozen=True)
 class MS1Config:
-    mass_tolerance: float = 2.0
+    # L1 同位素/近邻峰清除窗口：相邻两个峰如果 m/z 在 ±1Da 内，只保留强度最强的那个
+    mass_tolerance: float = 1.0
     min_intensity: float = 1.0
 
 
@@ -261,17 +262,25 @@ def match_one_mz(
     c3, d3 = _nearest_in_sorted(r3_sorted, mzv)
 
     tol23 = float(risk23_threshold)
-    best = None
-    if c2 is not None and d2 <= tol23:
-        best = ("Risk2", float(c2), float(d2))
-    if c3 is not None and d3 <= tol23:
-        if best is None or d3 < best[2]:
-            best = ("Risk3", float(c3), float(d3))
 
-    if best is not None:
-        actual = best[0]
-        matched_to = best[1]
-        diff = best[2]
+    # 优先级规则：如果同时满足 Risk2 与 Risk3，则优先判为 Risk2（高风险优先）
+    if c2 is not None and d2 <= tol23:
+        actual = "Risk2"
+        matched_to = float(c2)
+        diff = float(d2)
+        return {
+            "Actual Risk": actual,
+            "Output Risk": actual,
+            "Matched m/z": mz_rounded,
+            "Matched to m/z": float(matched_to),
+            "Match Type": f"精确匹配(阈值={tol23}Da)",
+            "Difference (Da)": float(diff),
+        }
+
+    if c3 is not None and d3 <= tol23:
+        actual = "Risk3"
+        matched_to = float(c3)
+        diff = float(d3)
         return {
             "Actual Risk": actual,
             "Output Risk": actual,

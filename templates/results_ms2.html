@@ -2,6 +2,52 @@
 
 {% block title %}MS2 Analysis Report{% endblock %}
 
+{% block head_extra %}
+<style>
+  .smiles-row {
+    display: flex;
+    gap: 1rem;
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+  .smiles-canvas {
+    background: white;
+    border: 1px solid var(--sl-color-neutral-200);
+    border-radius: 6px;
+  }
+</style>
+
+<!-- 轻量纯前端 SMILES 渲染：SmilesDrawer -->
+<script src="https://unpkg.com/smiles-drawer@2.0.1/dist/smiles-drawer.min.js"></script>
+<script>
+  function renderSmilesDrawings() {
+    if (!window.SmilesDrawer) return;
+
+    const drawer = new SmilesDrawer.Drawer({
+      width: 360,
+      height: 220,
+      padding: 12,
+      compactDrawing: true
+    });
+
+    document.querySelectorAll('[data-smiles]')
+      .forEach((el) => {
+        const smiles = el.getAttribute('data-smiles') || '';
+        const canvasId = el.getAttribute('data-canvas-id');
+        if (!smiles || !canvasId) return;
+
+        SmilesDrawer.parse(smiles, function(tree) {
+          drawer.draw(tree, canvasId, 'light', false);
+        }, function() {
+          // 解析失败：保持显示原始 SMILES 文本
+        });
+      });
+  }
+
+  document.addEventListener('DOMContentLoaded', renderSmilesDrawings);
+</script>
+{% endblock %}
+
 {% block content %}
 <sl-breadcrumb style="margin-bottom: 1.5rem;">
   <sl-breadcrumb-item href="{{ url_for('index') }}">Home</sl-breadcrumb-item>
@@ -56,27 +102,24 @@
     <sl-details>
       <div slot="summary" style="display: flex; align-items: center; justify-content: space-between; width: 100%; padding-right: 1rem;">
         <span style="font-family: var(--sl-font-mono); font-weight: 600;">Match #{{ loop.index }}</span>
-        <sl-tag size="small" variant="primary">Similarity: {{ "%.2f"|format(match.score * 100) }}%</sl-tag>
       </div>
 
       <div style="padding: 1rem; background: var(--sl-color-neutral-50); border-radius: 4px; margin-top: 0.5rem;">
         <strong style="color: var(--sl-color-neutral-600); font-size: 0.85rem;">SMILES Structure:</strong>
-        <div style="font-family: var(--sl-font-mono); word-break: break-all; margin-top: 0.25rem; color: var(--sl-color-neutral-800);">
-          {{ match.smiles }}
+        <div class="smiles-row" style="margin-top: 0.75rem;">
+          <canvas id="smiles-canvas-{{ loop.index }}" class="smiles-canvas" width="360" height="220"></canvas>
+          <div style="min-width: 240px; flex: 1;">
+            <div style="font-size: 0.75rem; color: var(--sl-color-neutral-500); margin-bottom: 0.25rem;">Raw SMILES</div>
+            <div data-smiles="{{ match.smiles }}" data-canvas-id="smiles-canvas-{{ loop.index }}"
+                 style="font-family: var(--sl-font-mono); word-break: break-all; color: var(--sl-color-neutral-800);">
+              {{ match.smiles }}
+            </div>
+          </div>
         </div>
       </div>
     </sl-details>
     {% endfor %}
   </div>
-
-  {% else %}
-  {% if risk_class == 'danger' %}
-  <sl-alert variant="warning" open>
-    <sl-icon slot="icon" name="exclamation-lg"></sl-icon>
-    <strong>No Library Matches Found</strong><br>
-    The model predicted high risk based on features, but no specific structure in the database matches closely.
-  </sl-alert>
-  {% endif %}
   {% endif %}
 
   <div style="margin-top: 3rem; text-align: center;">

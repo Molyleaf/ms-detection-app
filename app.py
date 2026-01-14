@@ -110,7 +110,8 @@ def upload_ms1():
         df_clean = process_l1_excel(
             input_xlsx=ms1_in,
             output_xlsx=None,
-            cfg=MS1Config(mass_tolerance=2.0, min_intensity=1.0),
+            # L1 同位素/近邻峰清理窗口：±1Da
+            cfg=MS1Config(mass_tolerance=1.0, min_intensity=1.0),
         )
 
         # 3) 风险匹配：直接用 df_processed，不写中间文件
@@ -222,11 +223,12 @@ def analyze_ms2():
             tol=0.2,
             top_k=10,
         )
-        matches = [{"smiles": r.get("smiles", "N/A"), "score": r.get("similarity", 0.0)} for r in top]
+        # 前端不展示 similarity；仅展示最相近的结构候选（至少 5 个）
+        matches = [{"smiles": r.get("smiles", "N/A")} for r in top]
 
         # 若谱库条目不足，做占位（保证前端至少渲染 5 行）
         while len(matches) < 5:
-            matches.append({"smiles": "N/A", "score": 0.0})
+            matches.append({"smiles": "N/A"})
 
         return render_template(
             "results_ms2.html",
