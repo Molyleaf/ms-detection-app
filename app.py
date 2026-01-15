@@ -182,17 +182,6 @@ def analyze_ms2():
         ms2_in = UPLOADS.new_file(ms2_file.filename)
         ms2_file.save(ms2_in)
 
-        # 1) 若 MS1 实际 Risk0：直接判阳（notebook 里 Risk0 是旁路）
-        if str(actual_risk) == "Risk0":
-            return render_template(
-                "results_ms2.html",
-                parent_mz=parent_mz,
-                prob=100.0,
-                risk_text="有危险 (Confirmed)",
-                risk_class="danger",
-                matches=[],
-            )
-
         # 2) MS2 预处理：输出 peaks 字符串（mass:intensity,...）
         peaks = process_l2_excel_to_peaks(
             input_xlsx=ms2_in,
@@ -203,10 +192,15 @@ def analyze_ms2():
             return "二级质谱 peaks 为空，无法判定", 400
 
         # 3) ONNX 推理（懒加载）
-        classifier = get_classifier()
-        pred = classifier.predict_from_peaks(peaks)
-        label = pred["label"]
-        prob = float(pred["probability"])
+        #    若 MS1 实际 Risk0：直接判阳(Positive/100%)，但不绕过谱库回溯
+        if str(actual_risk) == "Risk0":
+            label = "Positive"
+            prob = 1.0
+        else:
+            classifier = get_classifier()
+            pred = classifier.predict_from_peaks(peaks)
+            label = pred["label"]
+            prob = float(pred["probability"])
 
         # 4) 显示文本（按你模板的 class 约定）
         if label == "Positive":
@@ -215,6 +209,13 @@ def analyze_ms2():
         else:
             risk_text, risk_class = "未见异常", "success"
             prob_display = round(prob * 100.0, 2) if prob <= 1.0 else 0.0
+
+
+        # 4.1) Risk0：固定为 Confirmed，并强制 100%
+        if str(actual_risk) == "Risk0":
+            risk_text = "有危险 (Confirmed)"
+            risk_class = "danger"
+            prob_display = 100.0
 
         # 5) 谱库回溯（结构匹配：无论最高相似度多少，都至少展示 5 个候选）
         top = topk_library_matches(
