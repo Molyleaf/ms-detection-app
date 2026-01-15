@@ -217,19 +217,23 @@ def analyze_ms2():
             risk_class = "danger"
             prob_display = 100.0
 
-        # 5) 谱库回溯（结构匹配：无论最高相似度多少，都至少展示 5 个候选）
-        top = topk_library_matches(
-            peaks=peaks,
-            spectrum_db_joblib=ASSETS["spectrum_db"],
-            tol=0.2,
-            top_k=10,
-        )
-        # 前端不展示 similarity；仅展示最相近的结构候选（至少 5 个）
-        matches = [{"smiles": r.get("smiles", "N/A")} for r in top]
+        # 5) 谱库回溯（L3）：仅在预测为阳性时进行
+        #    需求：预测为阴性时，不进行 L3 匹配（避免无意义的谱库扫描与耗时）
+        matches = None
+        if label == "Positive":
+            # 结构匹配：无论最高相似度多少，都至少展示 5 个候选
+            top = topk_library_matches(
+                peaks=peaks,
+                spectrum_db_joblib=ASSETS["spectrum_db"],
+                tol=0.2,
+                top_k=10,
+            )
+            # 前端不展示 similarity；仅展示最相近的结构候选（至少 5 个）
+            matches = [{"smiles": r.get("smiles", "N/A")} for r in top]
 
-        # 若谱库条目不足，做占位（保证前端至少渲染 5 行）
-        while len(matches) < 5:
-            matches.append({"smiles": "N/A"})
+            # 若谱库条目不足，做占位（保证前端至少渲染 5 行）
+            while len(matches) < 5:
+                matches.append({"smiles": "N/A"})
 
         return render_template(
             "results_ms2.html",
