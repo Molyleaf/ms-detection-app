@@ -1,168 +1,619 @@
 <!DOCTYPE html>
 <html lang="en" class="sl-theme-light">
 <head>
-	<meta charset="UTF-8">
-	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title>{% block title %}Chemical Risk Analysis{% endblock %}</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>{% block title %}Chemical Risk Analysis{% endblock %}</title>
 
-	<link rel="stylesheet" href="https://unpkg.shop.jd.com/@shoelace-style/shoelace@2.20.1/cdn/themes/light.css" />
-	<script type="module" src="https://unpkg.shop.jd.com/@shoelace-style/shoelace@2.20.1/cdn/shoelace-autoloader.js"></script>
+  <link rel="stylesheet" href="https://unpkg.shop.jd.com/@shoelace-style/shoelace@2.20.1/cdn/themes/light.css" />
+  <link rel="stylesheet" href="https://unpkg.shop.jd.com/@shoelace-style/shoelace@2.20.1/cdn/themes/dark.css" />
+  <script type="module" src="https://unpkg.shop.jd.com/@shoelace-style/shoelace@2.20.1/cdn/shoelace-autoloader.js"></script>
 
-	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    :not(:defined) {
+      visibility: hidden;
+    }
 
-	<style>
-        :not(:defined) { visibility: hidden; }
+    :root {
+      --tr-header-height: 68px;
+      --tr-footer-height: 52px;
+      --tr-bg-gradient: linear-gradient(145deg, #eef3f8 0%, #d8e5f3 100%);
+      --tr-surface: rgba(255, 255, 255, 0.78);
+      --tr-surface-strong: rgba(255, 255, 255, 0.92);
+      --tr-border: rgba(15, 23, 42, 0.08);
+      --tr-border-strong: rgba(15, 23, 42, 0.14);
+      --tr-text: #172133;
+      --tr-muted: #5d697b;
+      --tr-shadow-card: 0 24px 64px rgba(29, 41, 67, 0.16);
+      --tr-shadow-header: 0 10px 30px rgba(15, 23, 42, 0.06);
+      --tr-accent: #0f766e;
+      --tr-accent-strong: #1d4ed8;
+      --tr-accent-soft: rgba(15, 118, 110, 0.12);
+    }
 
-        /* Global Variables & Reset */
-        :root {
-            --app-header-height: 60px; /* 稍微减小高度以节省空间 */
-            --app-footer-height: 60px;
-            --app-bg-gradient: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-            --app-shadow-card: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-            --app-shadow-header: 0 4px 30px rgba(0, 0, 0, 0.05);
+    html.sl-theme-dark {
+      --tr-bg-gradient: linear-gradient(145deg, #08111f 0%, #101b2d 100%);
+      --tr-surface: rgba(8, 16, 30, 0.78);
+      --tr-surface-strong: rgba(10, 18, 34, 0.92);
+      --tr-border: rgba(148, 163, 184, 0.16);
+      --tr-border-strong: rgba(148, 163, 184, 0.24);
+      --tr-text: #f8fafc;
+      --tr-muted: rgba(226, 232, 240, 0.72);
+      --tr-shadow-card: 0 28px 72px rgba(2, 8, 23, 0.44);
+      --tr-shadow-header: 0 10px 30px rgba(2, 8, 23, 0.28);
+      --tr-accent: #5eead4;
+      --tr-accent-strong: #93c5fd;
+      --tr-accent-soft: rgba(94, 234, 212, 0.16);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      min-height: 100%;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      min-height: 100dvh;
+      background: var(--tr-bg-gradient);
+      font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      color: var(--tr-text);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .app-header {
+      position: relative;
+      z-index: 20;
+      background: color-mix(in srgb, var(--tr-surface-strong) 88%, transparent);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--tr-border);
+      box-shadow: var(--tr-shadow-header);
+      flex-shrink: 0;
+    }
+
+    .container {
+      width: min(100%, 1200px);
+      margin: 0 auto;
+      padding: 0 clamp(1rem, 3vw, 1.5rem);
+    }
+
+    .header-content,
+    .footer-content {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+
+    .header-content {
+      min-height: var(--tr-header-height);
+    }
+
+    .footer-content {
+      min-height: var(--tr-footer-height);
+    }
+
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.85rem;
+      text-decoration: none;
+      color: inherit;
+    }
+
+    .brand-mark {
+      width: 2.75rem;
+      height: 2.75rem;
+      border-radius: 0.95rem;
+      display: grid;
+      place-items: center;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      background: linear-gradient(135deg, rgba(15, 118, 110, 0.16), rgba(37, 99, 235, 0.18));
+      border: 1px solid var(--tr-border-strong);
+    }
+
+    .app-title {
+      font-size: 1.18rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin: 0;
+      color: var(--tr-text);
+    }
+
+    .brand-subtitle,
+    .footer-note {
+      color: var(--tr-muted);
+      font-size: 0.85rem;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .header-actions sl-button::part(base),
+    .header-actions sl-icon-button::part(base) {
+      border-radius: 999px;
+    }
+
+    .header-actions sl-icon-button::part(base) {
+      border: 1px solid var(--tr-border-strong);
+      background: color-mix(in srgb, var(--tr-surface-strong) 88%, transparent);
+      color: var(--tr-text);
+    }
+
+    .main-content {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      padding: clamp(0.75rem, 2vw, 1.4rem) 0;
+      overflow: auto;
+    }
+
+    .main-content > .container {
+      width: 100%;
+    }
+
+    .footer {
+      background: color-mix(in srgb, var(--tr-surface-strong) 84%, transparent);
+      backdrop-filter: blur(8px);
+      color: var(--tr-muted);
+      font-size: 0.85rem;
+      border-top: 1px solid var(--tr-border);
+      flex-shrink: 0;
+    }
+
+    .card-base {
+      background: linear-gradient(180deg, var(--tr-surface-strong), var(--tr-surface));
+      border-radius: 1.6rem;
+      box-shadow: var(--tr-shadow-card);
+      border: 1px solid var(--tr-border);
+      overflow: hidden;
+    }
+
+    .font-mono {
+      font-family: "SF Mono", "Roboto Mono", Menlo, monospace;
+      font-feature-settings: "tnum";
+      font-variant-numeric: tabular-nums;
+    }
+
+    .view-home {
+      overflow: hidden;
+    }
+
+    .view-home .main-content {
+      align-items: center;
+      overflow: hidden;
+    }
+
+    .view-home .main-content > .container {
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .result-shell {
+      width: min(100%, 1120px);
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .result-hero-card::part(base) {
+      border-radius: 1.8rem;
+      border: 1px solid var(--tr-border);
+      background: linear-gradient(180deg, var(--tr-surface-strong), var(--tr-surface));
+      box-shadow: var(--tr-shadow-card);
+    }
+
+    .result-hero-card::part(body) {
+      display: flex;
+      flex-direction: column;
+      gap: 1.35rem;
+      padding: clamp(1rem, 2.4vw, 1.5rem);
+    }
+
+    .result-hero {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .result-copy {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      max-width: 720px;
+    }
+
+    .result-kicker {
+      display: inline-flex;
+      align-items: center;
+      width: fit-content;
+      padding: 0.35rem 0.8rem;
+      border-radius: 999px;
+      background: var(--tr-accent-soft);
+      color: var(--tr-accent);
+      font-size: 0.84rem;
+      font-weight: 600;
+    }
+
+    .result-heading {
+      margin: 0;
+      color: var(--tr-text);
+      font-size: clamp(1.55rem, 3vw, 2.35rem);
+      line-height: 1.02;
+      letter-spacing: -0.03em;
+    }
+
+    .result-supporting {
+      margin: 0;
+      color: var(--tr-muted);
+      line-height: 1.65;
+    }
+
+    .result-chip-row,
+    .action-row,
+    .result-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+
+    .result-chip-row {
+      gap: 0.5rem;
+    }
+
+    .result-actions {
+      margin-left: auto;
+      justify-content: flex-end;
+    }
+
+    .result-actions sl-button::part(base),
+    .pill-button::part(base) {
+      border-radius: 999px;
+    }
+
+    .metric-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 0.85rem;
+    }
+
+    .metric-card {
+      min-height: 116px;
+      padding: 1rem;
+      border-radius: 1.3rem;
+      border: 1px solid var(--tr-border);
+      background: color-mix(in srgb, var(--tr-surface-strong) 82%, transparent);
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+
+    .metric-label {
+      color: var(--tr-muted);
+      font-size: 0.84rem;
+    }
+
+    .metric-value {
+      color: var(--tr-text);
+      font-size: 1.55rem;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+    }
+
+    .metric-note {
+      color: var(--tr-muted);
+      font-size: 0.88rem;
+      line-height: 1.55;
+    }
+
+    .section-panel {
+      overflow: hidden;
+      border-radius: 1.5rem;
+      border: 1px solid var(--tr-border);
+      background: linear-gradient(
+        180deg,
+        color-mix(in srgb, var(--tr-surface-strong) 88%, transparent),
+        color-mix(in srgb, var(--tr-surface) 82%, transparent)
+      );
+      box-shadow: var(--tr-shadow-card);
+    }
+
+    .section-panel-head {
+      padding: 1rem 1.25rem 0;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .section-panel-body {
+      padding: 1rem 1.25rem 1.25rem;
+    }
+
+    .section-panel-title {
+      margin: 0;
+      color: var(--tr-text);
+      font-size: 1.1rem;
+    }
+
+    .surface-note {
+      margin: 0.35rem 0 0;
+      color: var(--tr-muted);
+      line-height: 1.6;
+    }
+
+    .table-scroll {
+      overflow-x: auto;
+    }
+
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.65rem;
+      padding: 1.25rem;
+      border-radius: 1.3rem;
+      border: 1px dashed var(--tr-border-strong);
+      background: color-mix(in srgb, var(--tr-surface) 78%, transparent);
+      color: var(--tr-muted);
+      text-align: center;
+    }
+
+    .empty-state sl-icon {
+      font-size: 2rem;
+      color: var(--tr-accent-strong);
+    }
+
+    @media (max-width: 900px) {
+      .metric-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .result-actions {
+        margin-left: 0;
+        justify-content: flex-start;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .header-content,
+      .footer-content {
+        flex-wrap: wrap;
+        padding: 0.75rem 0;
+      }
+
+      .header-actions {
+        margin-left: auto;
+        justify-content: flex-end;
+      }
+
+      .brand-mark {
+        width: 2.55rem;
+        height: 2.55rem;
+      }
+
+      .app-title {
+        font-size: 1.08rem;
+      }
+    }
+
+    @media (max-height: 760px) {
+      .view-home .header-content {
+        min-height: 60px;
+      }
+
+      .view-home .footer {
+        display: none;
+      }
+
+      .view-home .main-content {
+        padding: 0.75rem 0;
+      }
+    }
+  </style>
+
+  <script>
+    const TRANSIA_MESSAGES = {
+      zh: {
+        pageTitleFallback: "TransIA",
+        selectedFile: "已选择：{name}",
+        uploadReady: "文件已就绪",
+        fileEmpty: "尚未选择文件",
+        uploadRequired: "请上传一个有效的 .xlsx、.xls 或 .csv 文件。",
+        ms2Required: "请先选择 MS2 文件，再继续分析。",
+        modeLabels: {
+          positive: "正离子模式",
+          negative: "负离子模式"
+        },
+        riskLabels: {
+          Risk1: "风险 1（高）",
+          Risk2: "风险 2（高）",
+          Risk3: "风险 3（安全）",
+          Safe: "安全"
         }
+      },
+      en: {
+        pageTitleFallback: "TransIA",
+        selectedFile: "Selected: {name}",
+        uploadReady: "File ready",
+        fileEmpty: "No file selected",
+        uploadRequired: "Please upload a valid .xlsx, .xls, or .csv file.",
+        ms2Required: "Please choose an MS2 file before continuing.",
+        modeLabels: {
+          positive: "Positive mode",
+          negative: "Negative mode"
+        },
+        riskLabels: {
+          Risk1: "Risk 1 (High)",
+          Risk2: "Risk 2 (High)",
+          Risk3: "Risk 3 (Safe)",
+          Safe: "Safe"
+        }
+      }
+    };
 
-        html, body {
-            height: 100%; /* 关键：强制占满视口 */
-            margin: 0;
-            padding: 0;
-            overflow: hidden; /* 防止 body 出现双重滚动条 */
-        }
+    let currentTransiaLanguage = "en";
 
-        body {
-            background: var(--app-bg-gradient);
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            color: var(--sl-color-neutral-800);
-            display: flex;
-            flex-direction: column;
-        }
+    function detectTransiaLanguage() {
+      const userLang = (navigator.language || navigator.userLanguage || "en").toLowerCase();
+      return userLang.startsWith("zh") ? "zh" : "en";
+    }
 
-        /* Modern Glassy Header */
-        .app-header {
-            background: rgba(255, 255, 255, 0.9);
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
-            border-bottom: 1px solid rgba(255,255,255,0.3);
-            box-shadow: var(--app-shadow-header);
-            height: var(--app-header-height);
-            display: flex;
-            align-items: center;
-            flex-shrink: 0; /* 防止 Header 被压缩 */
-            z-index: 1000;
-        }
+    function getTransiaLanguage() {
+      return currentTransiaLanguage;
+    }
 
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 0 1.5rem;
-            width: 100%;
-            box-sizing: border-box;
-        }
+    function transiaText(key, lang) {
+      const safeLang = lang === "zh" ? "zh" : "en";
+      return TRANSIA_MESSAGES[safeLang][key] || TRANSIA_MESSAGES.en[key] || key;
+    }
 
-        .header-content {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
+    function transiaFormat(text, values) {
+      return text.replace(/\{(\w+)\}/g, (_, key) => values[key] || "");
+    }
 
-        .brand {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            text-decoration: none;
-            color: var(--sl-color-neutral-900);
-        }
+    function applyTransiaTheme(isDark) {
+      document.documentElement.classList.toggle("sl-theme-dark", Boolean(isDark));
+      document.documentElement.style.colorScheme = isDark ? "dark" : "light";
+    }
 
-        h1.app-title {
-            font-size: 1.25rem;
-            font-weight: 700;
-            letter-spacing: -0.02em;
-            margin: 0;
-            background: -webkit-linear-gradient(45deg, var(--sl-color-primary-700), var(--sl-color-primary-500));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
+    function initTransiaTheme() {
+      const mediaQuery = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)") : null;
+      const syncTheme = () => applyTransiaTheme(Boolean(mediaQuery && mediaQuery.matches));
 
-        /* Scrollable Main Content Area */
-        .main-content {
-            flex: 1; /* 占据剩余所有空间 */
-            overflow-y: auto; /* 仅在中间区域滚动 */
-            padding-top: 2rem;
-            padding-bottom: 2rem;
-            display: flex;
-            flex-direction: column;
-            position: relative;
-        }
+      syncTheme();
 
-        /* 针对内容较少的页面，让内容垂直居中 (可选，这里默认不做，保持顶部对齐更自然) */
-        /* .main-content > .container { margin: auto; } */
+      if (!mediaQuery) {
+        return;
+      }
 
-        .footer {
-            background: rgba(255, 255, 255, 0.8);
-            backdrop-filter: blur(5px);
-            text-align: center;
-            padding: 0.8rem;
-            color: var(--sl-color-neutral-500);
-            font-size: 0.8rem;
-            border-top: 1px solid rgba(255,255,255,0.4);
-            flex-shrink: 0;
-        }
+      if (typeof mediaQuery.addEventListener === "function") {
+        mediaQuery.addEventListener("change", syncTheme);
+      } else if (typeof mediaQuery.addListener === "function") {
+        mediaQuery.addListener(syncTheme);
+      }
+    }
 
-        /* Common Utilities */
-        .card-base {
-            background: white;
-            border-radius: var(--sl-border-radius-large);
-            box-shadow: var(--app-shadow-card);
-            border: 1px solid rgba(255,255,255,0.6);
-            overflow: hidden;
-        }
+    function applyTransiaLanguage(lang) {
+      const safeLang = lang === "zh" ? "zh" : "en";
+      currentTransiaLanguage = safeLang;
+      document.documentElement.lang = safeLang === "zh" ? "zh-CN" : "en";
 
-        .font-mono {
-            font-family: 'SF Mono', 'Roboto Mono', Menlo, monospace;
-            font-feature-settings: "tnum";
-            font-variant-numeric: tabular-nums;
-        }
+      document.querySelectorAll("[data-i18n-zh][data-i18n-en]").forEach((element) => {
+        const value = element.getAttribute(`data-i18n-${safeLang}`);
+        const attr = element.getAttribute("data-i18n-attr");
 
-        /* Scrollbar styling for Webkit */
-        .main-content::-webkit-scrollbar {
-            width: 8px;
+        if (attr) {
+          element.setAttribute(attr, value);
+        } else {
+          element.textContent = value;
         }
-        .main-content::-webkit-scrollbar-track {
-            background: transparent;
-        }
-        .main-content::-webkit-scrollbar-thumb {
-            background-color: rgba(0,0,0,0.1);
-            border-radius: 4px;
-        }
-        .main-content::-webkit-scrollbar-thumb:hover {
-            background-color: rgba(0,0,0,0.2);
-        }
-	</style>
-	{% block head_extra %}{% endblock %}
+      });
+
+      const titleMeta = document.getElementById("page-title-i18n");
+      if (titleMeta) {
+        document.title = titleMeta.getAttribute(`data-title-${safeLang}`) || transiaText("pageTitleFallback", safeLang);
+      }
+
+      document.querySelectorAll("[data-mode-label]").forEach((element) => {
+        const mode = element.getAttribute("data-mode-label");
+        element.textContent = TRANSIA_MESSAGES[safeLang].modeLabels[mode] || mode;
+      });
+
+      document.querySelectorAll("[data-risk-label]").forEach((element) => {
+        const risk = element.getAttribute("data-risk-label");
+        element.textContent = TRANSIA_MESSAGES[safeLang].riskLabels[risk] || TRANSIA_MESSAGES.en.riskLabels[risk] || risk;
+      });
+
+      document.dispatchEvent(new CustomEvent("transia:languagechange", { detail: { lang: safeLang } }));
+    }
+
+    function setTransiaLanguage(lang) {
+      applyTransiaLanguage(lang);
+    }
+
+    window.transiaUi = {
+      getLanguage: getTransiaLanguage,
+      setLanguage: setTransiaLanguage,
+      applyLanguage: applyTransiaLanguage,
+      text: transiaText,
+      format: transiaFormat
+    };
+
+    document.addEventListener("DOMContentLoaded", () => {
+      currentTransiaLanguage = detectTransiaLanguage();
+      initTransiaTheme();
+      applyTransiaLanguage(currentTransiaLanguage);
+
+      const langToggle = document.getElementById("lang-toggle");
+      if (langToggle) {
+        langToggle.addEventListener("click", () => {
+          setTransiaLanguage(currentTransiaLanguage === "zh" ? "en" : "zh");
+        });
+      }
+    });
+  </script>
+
+  {% block head_extra %}{% endblock %}
 </head>
-<body>
-
+<body class="{% block body_class %}{% endblock %}">
 <header class="app-header">
-	<div class="container header-content">
-		<a href="{{ url_for('index') }}" class="brand">
-			<h1 class="app-title">TransIA</h1>
-		</a>
+  <div class="container header-content">
+    <a href="./" class="brand">
+      <div class="brand-mark" aria-hidden="true">TR</div>
+      <div>
+        <h1 class="app-title">TransIA</h1>
+        <div class="brand-subtitle" data-i18n-zh="非法添加剂风险预测" data-i18n-en="Illegal additive risk prediction">Illegal additive risk prediction</div>
+      </div>
+    </a>
 
-		<sl-icon-button
-				name="github"
-				label="Github"
-				href="https://github.com/Molyleaf/ms-detection-app"
-				target="_blank"
-				style="font-size: 1.25rem; color: var(--sl-color-neutral-600);">
-		</sl-icon-button>
-	</div>
+    <div class="header-actions">
+      <sl-button id="lang-toggle" size="small" outline pill data-i18n-zh="切换语言" data-i18n-en="Toggle language" data-i18n-attr="aria-label">
+        <sl-icon slot="prefix" name="translate"></sl-icon>
+        <span data-i18n-zh="中文 / EN" data-i18n-en="中文 / EN">中文 / EN</span>
+      </sl-button>
+
+      <sl-icon-button
+        name="github"
+        label="Github"
+        href="https://github.com/Molyleaf/ms-detection-app"
+        target="_blank">
+      </sl-icon-button>
+    </div>
+  </div>
 </header>
 
 <main class="main-content">
-	<div class="container">
-		{% block content %}{% endblock %}
-	</div>
+  <div class="container">
+    {% block content %}{% endblock %}
+  </div>
 </main>
+
+<footer class="footer">
+  <div class="container footer-content">
+    <span>© TransIA</span>
+    <span class="footer-note" data-i18n-zh="质谱风险筛查界面" data-i18n-en="Mass spectrometry risk screening">Mass spectrometry risk screening</span>
+  </div>
+</footer>
 
 </body>
 </html>
