@@ -227,12 +227,15 @@ class ApplicabilityDomainChecker:
         if within_ad:
             confidence_level = 'High'
             message = '该谱图在模型适用域内，预测结果可信度高。'
+            message_en = 'The spectrum is within the applicability domain, and the prediction is highly reliable.'
         elif leverage <= 1.5 * self.h_star:
             confidence_level = 'Medium'
             message = '该谱图处于适用域边缘，预测结果仅供参考，建议结合MS2碎片手动核实。'
+            message_en = 'The spectrum is at the edge of the applicability domain. The prediction is for reference only; manual verification with MS2 fragments is recommended.'
         else:
             confidence_level = 'Out of AD'
             message = '警告：该谱图超出模型适用域，预测结果不确定性高，不建议作为监管依据。'
+            message_en = 'Warning: The spectrum is outside the applicability domain. The prediction has high uncertainty and is not recommended as a regulatory basis.'
         
         result = {
             'within_ad': bool(within_ad),
@@ -240,6 +243,7 @@ class ApplicabilityDomainChecker:
             'h_star': float(self.h_star),
             'confidence_level': confidence_level,
             'message': message,
+            'message_en': message_en,
             'num_peaks': len(peaks)
         }
         

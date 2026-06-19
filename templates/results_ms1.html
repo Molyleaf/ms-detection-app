@@ -12,7 +12,7 @@
   }
 
   .result-table thead th {
-    padding: 0.5rem 0.75rem;
+    padding: 0.35rem 0.5rem;
     text-align: left;
     font-size: 0.875rem;
     font-weight: 700;
@@ -24,7 +24,7 @@
   }
 
   .result-table tbody td {
-    padding: 0.5rem 0.75rem;
+    padding: 0.35rem 0.5rem;
     vertical-align: middle;
     border-bottom: 1px solid color-mix(in srgb, var(--tr-border) 92%, transparent);
     color: var(--tr-text);
@@ -50,13 +50,11 @@
     font-weight: 600;
   }
 
-  .mass-note,
-  .matched-note,
   .mini-file-name,
   .action-note {
     color: var(--tr-muted);
-    font-size: 0.875rem;
-    line-height: 1.5;
+    font-size: 0.8rem;
+    line-height: 1.2;
   }
 
   .intensity-cell {
@@ -78,16 +76,9 @@
 
   .ms2-upload-form {
     display: flex;
-    flex-direction: column;
-    gap: 0.35rem;
-    min-width: 220px;
-  }
-
-  .ms2-upload-actions {
-    display: flex;
-    gap: 0.65rem;
+    flex-direction: row;
     align-items: center;
-    flex-wrap: wrap;
+    gap: 0.5rem;
   }
 
   .inline-file-picker {
@@ -109,11 +100,7 @@
     border-radius: 999px;
   }
 
-  .status-stack {
-    display: flex;
-    flex-direction: column;
-    gap: 0.4rem;
-  }
+
 
   .row-empty {
     display: inline-flex;
@@ -136,11 +123,6 @@
   }
 
   @media (max-width: 900px) {
-    .ms2-upload-actions {
-      flex-direction: column;
-      align-items: stretch;
-    }
-
     .upload-trigger,
     .analyze-trigger {
       width: 100%;
@@ -316,7 +298,6 @@
             <td>
               <div class="mass-cell">
                 <span class="mass-main">{{ "%.4f"|format(peak.Mass) }}</span>
-                <span class="mass-note" data-i18n-zh="质量升序展示" data-i18n-en="Ascending mass order">Ascending mass order</span>
               </div>
             </td>
 
@@ -345,7 +326,6 @@
               {% if peak.Matched_Mass > 0 %}
               <div class="matched-value">
                 <span class="matched-main">{{ "%.4f"|format(peak.Matched_Mass) }}</span>
-                <span class="matched-note" data-i18n-zh="命中候选库质量" data-i18n-en="Match found in library">Match found in library</span>
               </div>
               {% else %}
               <span class="row-empty" data-i18n-zh="暂无匹配" data-i18n-en="No match">No match</span>
@@ -360,23 +340,17 @@
                 <input type="hidden" name="output_risk" value="{{ peak.Output_Risk }}">
                 <input type="hidden" name="matched_mass" value="{{ peak.Matched_Mass }}">
 
-                <div class="status-stack">
-                  <label class="inline-file-picker">
-                    <input type="file" name="ms2_file" accept=".xlsx, .xls, .csv" required>
-                    <sl-button type="button" variant="default" size="small" outline class="upload-trigger">
-                      <sl-icon slot="prefix" name="paperclip"></sl-icon>
-                      <span data-i18n-zh="选择 MS2 文件" data-i18n-en="Choose MS2 file">Choose MS2 file</span>
-                    </sl-button>
-                  </label>
-                  <span class="mini-file-name">No file selected</span>
-                </div>
-
-                <div class="ms2-upload-actions">
-                  <sl-button type="submit" variant="danger" size="small" class="analyze-trigger">
-                    <span data-i18n-zh="分析" data-i18n-en="Analyze">Analyze</span>
-                    <sl-icon slot="suffix" name="arrow-right"></sl-icon>
+                <label class="inline-file-picker" title="Choose MS2 file">
+                  <input type="file" name="ms2_file" accept=".xlsx, .xls, .csv" required>
+                  <sl-button type="button" variant="default" size="small" outline class="upload-trigger">
+                    <sl-icon name="paperclip"></sl-icon>
                   </sl-button>
-                </div>
+                </label>
+                <span class="mini-file-name" style="max-width: 110px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">No file</span>
+                <sl-button type="submit" variant="danger" size="small" class="analyze-trigger">
+                  <span data-i18n-zh="分析" data-i18n-en="Analyze">Analyze</span>
+                  <sl-icon slot="suffix" name="arrow-right"></sl-icon>
+                </sl-button>
               </form>
               {% else %}
               <sl-tag size="small" pill>
