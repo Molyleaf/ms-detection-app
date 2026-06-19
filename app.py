@@ -27,7 +27,7 @@ _work_dir = os.environ.get("URL_PREFIX")
 if _work_dir:
     os.chdir(_work_dir)
 
-URL_PREFIX = "/TransIA"
+URL_PREFIX = os.environ.get("URL_PREFIX")
 
 app = Flask(__name__, static_url_path=f"{URL_PREFIX}/static")
 
