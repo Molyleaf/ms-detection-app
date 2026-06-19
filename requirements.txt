@@ -6,4 +6,3 @@ joblib
 onnxruntime-openvino
 gunicorn
 openpyxl
-scikit-learn

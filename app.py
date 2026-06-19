@@ -176,14 +176,8 @@ def upload_ms1():
                 }
             )
 
-        # AD 适用域判别
-        ad_checker = load_or_train_ad_checker(
-            model_path=ASSETS["ad_checker"],
-            train_data_path=ASSETS["ad_train_data"]
-        )
-        ad_result = ad_checker.check_ad_from_file(ms1_in, verbose=False)
-
-        return render_template("results_ms1.html", peaks=peaks_data, mode=mode, ad_result=ad_result)
+        # 移除了 AD 适用域判别，该步骤已被移动到 analyze_ms2 中前置串行执行
+        return render_template("results_ms1.html", peaks=peaks_data, mode=mode)
 
     except Exception as e:
         return f"处理失败: {e}", 500
@@ -212,6 +206,26 @@ def analyze_ms2():
         # 保存 MS2 上传文件（已添加文件名空值回退防空保护）
         ms2_in = UPLOADS.new_file(ms2_file.filename or "upload_ms2.xlsx")
         ms2_file.save(ms2_in)
+
+        # AD 适用域判别：在进行 MS2 深度预测和谱库扫描前置串行运行
+        ad_checker = load_or_train_ad_checker(
+            model_path=ASSETS["ad_checker"],
+            train_data_path=None
+        )
+        ad_result = ad_checker.check_ad_from_file(ms2_in, verbose=False)
+
+        # 如果超出了模型的适用域范围，则拒绝继续执行后续昂贵的 MS2 计算和谱库回溯
+        if not ad_result["within_ad"]:
+            return render_template(
+                "results_ms2.html",
+                parent_mz=parent_mz,
+                prob=None,
+                risk_text=None,
+                risk_class=None,
+                matches=None,
+                prob_symbol=None,
+                ad_result=ad_result,
+            )
 
         # 2) MS2 预处理：输出 peaks 字符串（mass:intensity,...）
         peaks = process_l2_excel_to_peaks(
@@ -280,6 +294,7 @@ def analyze_ms2():
             while len(matches) < 5:
                 matches.append({"smiles": "N/A"})
 
+        # 返回结果并包含 AD 适用域检测结果元数据
         return render_template(
             "results_ms2.html",
             parent_mz=parent_mz,
@@ -288,6 +303,7 @@ def analyze_ms2():
             risk_class=risk_class,
             matches=matches,
             prob_symbol=prob_symbol,
+            ad_result=ad_result,
         )
 
     except Exception as e:

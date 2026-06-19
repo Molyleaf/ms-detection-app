@@ -239,6 +239,30 @@
   <sl-card class="result-hero-card">
     <div class="risk-banner">
       <div class="risk-state">
+        {% if not ad_result.within_ad %}
+        <div class="risk-icon-shell is-danger">
+          <sl-icon name="shield-slash"></sl-icon>
+        </div>
+        <div class="risk-copy">
+          <div class="result-kicker" data-i18n-zh="适用域评估未通过" data-i18n-en="AD Evaluation Failed">AD Evaluation Failed</div>
+          <h2 class="risk-title" data-i18n-zh="超出适用域，不计算 MS2" data-i18n-en="Outside AD, MS2 calculation skipped">
+            Outside AD, MS2 calculation skipped
+          </h2>
+          <p class="risk-description" data-i18n-zh="该谱图超出模型适用域，预测结果不确定性高，已阻断后续 MS2 分析与库回溯计算。" data-i18n-en="The spectrum is outside the model applicability domain. Further MS2 analysis and library traceback have been aborted to prevent unreliable predictions.">
+            The spectrum is outside the model applicability domain. Further MS2 analysis and library traceback have been aborted to prevent unreliable predictions.
+          </p>
+          <div class="action-row">
+            <sl-button type="button" variant="default" outline class="pill-button" onclick="history.back()">
+              <sl-icon slot="prefix" name="arrow-left"></sl-icon>
+              <span data-i18n-zh="返回 MS1 结果" data-i18n-en="Back to MS1 Results">Back to MS1 Results</span>
+            </sl-button>
+            <sl-button href="{{ url_for('index') }}" variant="primary" class="pill-button">
+              <sl-icon slot="prefix" name="house"></sl-icon>
+              <span data-i18n-zh="返回首页" data-i18n-en="Return to Home">Return to Home</span>
+            </sl-button>
+          </div>
+        </div>
+        {% else %}
         <div class="risk-icon-shell {% if risk_class == 'danger' %}is-danger{% else %}is-safe{% endif %}">
           {% if risk_class == 'danger' %}
           <sl-icon name="exclamation-triangle"></sl-icon>
@@ -288,9 +312,20 @@
             </sl-button>
           </div>
         </div>
+        {% endif %}
       </div>
 
       <div class="confidence-panel">
+        {% if not ad_result.within_ad %}
+        <div class="confidence-caption" data-i18n-zh="适用域指标" data-i18n-en="Applicability Domain Metric">Applicability Domain Metric</div>
+        <div class="confidence-label-row">
+          <span data-i18n-zh="Leverage 值 / 阈值 h*" data-i18n-en="Leverage / Threshold h*">Leverage / Threshold h*</span>
+          <span class="confidence-value" style="color: var(--sl-color-danger-600);">{{ ad_result.leverage }} / {{ ad_result.h_star }}</span>
+        </div>
+        <div class="match-note" data-i18n-zh="当前 Leverage 超过阈值，表示该样本的输入特征分布与训练集差异过大。" data-i18n-en="Current Leverage exceeds threshold, meaning input distribution differs significantly from training data.">
+          Current Leverage exceeds threshold, meaning input distribution differs significantly from training data.
+        </div>
+        {% else %}
         <div class="confidence-caption" data-i18n-zh="模型置信概率" data-i18n-en="Model Confidence">Model Confidence</div>
 
         <div class="confidence-label-row">
@@ -313,6 +348,7 @@
           0-0.1: --- &nbsp;&nbsp; 0.1-0.3: -- &nbsp;&nbsp; 0.3-0.5: -<br>
           0.5-0.7: + &nbsp;&nbsp; 0.7-0.9: ++ &nbsp;&nbsp; 0.9-1.0: +++
         </div>
+        {% endif %}
       </div>
     </div>
 
@@ -324,24 +360,69 @@
       </div>
 
       <div class="metric-card">
-        <div class="metric-label" data-i18n-zh="风险状态" data-i18n-en="Risk Status">Risk Status</div>
+        <div class="metric-label" data-i18n-zh="适用域状态" data-i18n-en="AD Status">AD Status</div>
         <div class="metric-value">
-          {% if risk_class == 'danger' %}
-          <span data-i18n-zh="高风险" data-i18n-en="High Risk">High Risk</span>
+          {% if ad_result.within_ad %}
+          <span data-i18n-zh="在适用域内" data-i18n-en="Inside AD" style="color: var(--sl-color-success-600);">Inside AD</span>
           {% else %}
-          <span data-i18n-zh="安全" data-i18n-en="Safe">Safe</span>
+          <span data-i18n-zh="超出适用域" data-i18n-en="Outside AD" style="color: var(--sl-color-danger-600);">Outside AD</span>
           {% endif %}
         </div>
-        <div class="metric-note" data-i18n-zh="仅调整视觉表达，不更改原始风险分类逻辑。" data-i18n-en="Only the presentation is updated; the original risk classification logic is unchanged.">Only the presentation is updated; the original risk classification logic is unchanged.</div>
+        <div class="metric-note" data-i18n-zh="模型在当前样本下的可信适用域评定。" data-i18n-en="Model reliability applicability domain checker rating.">Model reliability applicability domain checker rating.</div>
       </div>
 
       <div class="metric-card">
         <div class="metric-label" data-i18n-zh="匹配候选数" data-i18n-en="Candidate Matches">Candidate Matches</div>
-        <div class="metric-value">{{ matches|length }}</div>
+        <div class="metric-value">{% if matches %}{{ matches|length }}{% else %}0{% endif %}</div>
         <div class="metric-note" data-i18n-zh="库回溯区中可供人工复核的候选分子数量。" data-i18n-en="Number of candidate molecules available in the traceback section below.">Number of candidate molecules available in the traceback section below.</div>
       </div>
     </div>
   </sl-card>
+
+  <section class="section-panel">
+    <div class="section-panel-head">
+      <div>
+        <h3 class="section-panel-title" data-i18n-zh="适用域 (AD) 判别结果" data-i18n-en="Applicability Domain (AD) Evaluation">Applicability Domain (AD) Evaluation</h3>
+        <p class="surface-note" data-i18n-zh="评估上传的二级数据是否处于当前模型的可信适用范围内。" data-i18n-en="Assess if the uploaded MS2 data is within the model's reliability range.">
+          Assess if the uploaded MS2 data is within the model's reliability range.
+        </p>
+      </div>
+      <sl-tag variant="{% if ad_result.within_ad %}success{% else %}danger{% endif %}" pill>
+        {% if ad_result.within_ad %}
+        <span data-i18n-zh="在适用域内" data-i18n-en="Inside AD">Inside AD</span>
+        {% else %}
+        <span data-i18n-zh="超出适用域" data-i18n-en="Outside AD">Outside AD</span>
+        {% endif %}
+      </sl-tag>
+    </div>
+    
+    <div class="section-panel-body" style="padding: 1.25rem; display: flex; flex-direction: column; gap: 0.75rem;">
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+        <div style="background: rgba(148, 163, 184, 0.05); padding: 1rem; border-radius: 0.75rem; border: 1px solid var(--tr-border);">
+          <div style="font-size: 0.8rem; color: var(--tr-muted); margin-bottom: 0.25rem;" data-i18n-zh="Leverage 值 / 阈值 h*" data-i18n-en="Leverage / Threshold h*">Leverage / Threshold h*</div>
+          <div style="font-family: var(--sl-font-mono); font-size: 1.25rem; font-weight: 700; color: var(--tr-text);">
+            {{ ad_result.leverage }} / {{ ad_result.h_star }}
+          </div>
+        </div>
+        <div style="background: rgba(148, 163, 184, 0.05); padding: 1rem; border-radius: 0.75rem; border: 1px solid var(--tr-border);">
+          <div style="font-size: 0.8rem; color: var(--tr-muted); margin-bottom: 0.25rem;" data-i18n-zh="置信度等级" data-i18n-en="Confidence Level">Confidence Level</div>
+          <div style="font-size: 1.25rem; font-weight: 700; color: {% if ad_result.confidence_level == 'High' %}var(--sl-color-success-600){% elif ad_result.confidence_level == 'Medium' %}var(--sl-color-warning-600){% else %}var(--sl-color-danger-600){% endif %};">
+            {{ ad_result.confidence_level }}
+          </div>
+        </div>
+        <div style="background: rgba(148, 163, 184, 0.05); padding: 1rem; border-radius: 0.75rem; border: 1px solid var(--tr-border);">
+          <div style="font-size: 0.8rem; color: var(--tr-muted); margin-bottom: 0.25rem;" data-i18n-zh="分析峰数量" data-i18n-en="Peaks Count">Peaks Count</div>
+          <div style="font-size: 1.25rem; font-weight: 700; color: var(--tr-text);">
+            {{ ad_result.num_peaks }}
+          </div>
+        </div>
+      </div>
+      <div style="margin-top: 0.5rem; font-size: 0.9rem; line-height: 1.5; color: var(--tr-text);">
+        <strong><span data-i18n-zh="评估意见：" data-i18n-en="Evaluation Note:">Evaluation Note:</span></strong>
+        <span>{{ ad_result.message }}</span>
+      </div>
+    </div>
+  </section>
 
   <section class="section-panel">
     <div class="section-panel-head">
