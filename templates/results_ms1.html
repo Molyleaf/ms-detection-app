@@ -248,12 +248,12 @@
           </sl-tag>
         </div>
 
-        <h2 class="result-heading" data-i18n-zh="按峰位逐条审阅风险输出，并在需要时衔接 MS2 深度分析" data-i18n-en="Review peak risk outputs and proceed to MS2 analysis if needed.">
-          Review peak risk outputs and proceed to MS2 analysis if needed.
+        <h2 class="result-heading" data-i18n-zh="审阅风险结果并进行 MS2 分析（若适用）" data-i18n-en="Review risk results and proceed to MS2 analysis if needed.">
+          Review risk results and proceed to MS2 analysis if needed.
         </h2>
 
-        <p class="result-supporting" data-i18n-zh="当前页面保留原有筛查逻辑与表单提交方式，仅统一为与首页一致的工作台式结果布局。排序逻辑仍为按质量升序，并使用 ±1Da 窗口聚类。" data-i18n-en="Data is clustered using a ±1 Da window and ordered by ascending mass.">
-          Data is clustered using a ±1 Da window and ordered by ascending mass.
+        <p class="result-supporting" data-i18n-zh="数据按质量升序排列，并使用 ±1 Da 窗口聚类。" data-i18n-en="Data is ordered by ascending mass and clustered using a ±1 Da window.">
+          Data is ordered by ascending mass and clustered using a ±1 Da window.
         </p>
       </div>
 
@@ -269,19 +269,19 @@
       <div class="metric-card">
         <div class="metric-label" data-i18n-zh="峰数量" data-i18n-en="Peak count">Peak count</div>
         <div class="metric-value">{{ peaks|length }}</div>
-        <div class="metric-note" data-i18n-zh="本次筛查进入结果页的总峰数。" data-i18n-en="Total peaks found in this screening.">Total peaks found in this screening.</div>
+        <div class="metric-note" data-i18n-zh="筛查发现的总峰数。" data-i18n-en="Total peaks found in this screening.">Total peaks found in this screening.</div>
       </div>
 
       <div class="metric-card">
-        <div class="metric-label" data-i18n-zh="高风险输出" data-i18n-en="High risk">High risk</div>
+        <div class="metric-label" data-i18n-zh="高风险" data-i18n-en="High risk">High risk</div>
         <div class="metric-value">{{ summary.high_risk }}</div>
-        <div class="metric-note" data-i18n-zh="需要补充上传 MS2 文件继续深度分析的峰。" data-i18n-en="Peaks requiring MS2 analysis.">Peaks requiring MS2 analysis.</div>
+        <div class="metric-note" data-i18n-zh="需要 MS2 分析的峰。" data-i18n-en="Peaks requiring MS2 analysis.">Peaks requiring MS2 analysis.</div>
       </div>
 
       <div class="metric-card">
         <div class="metric-label" data-i18n-zh="库匹配命中" data-i18n-en="Library hits">Library hits</div>
         <div class="metric-value">{{ summary.matched }}</div>
-        <div class="metric-note" data-i18n-zh="已在库中找到候选匹配质量的峰数量。" data-i18n-en="Peaks matching candidates in the library.">Peaks matching candidates in the library.</div>
+        <div class="metric-note" data-i18n-zh="在候选库中找到匹配的峰。" data-i18n-en="Peaks matching candidates in the library.">Peaks matching candidates in the library.</div>
       </div>
     </div>
   </sl-card>
@@ -291,14 +291,11 @@
   <section class="section-panel">
     <div class="section-panel-head">
       <div>
-        <h3 class="section-panel-title" data-i18n-zh="峰位明细" data-i18n-en="Peak details">Peak details</h3>
-        <p class="surface-note" data-i18n-zh="逐行查看质量、归一化强度、风险输出与库匹配结果。仅当结果为高风险时，保留原有的 MS2 上传入口。" data-i18n-en="Review mass, intensity, risk, and library matches. Upload MS2 data for high-risk peaks.">
+        <h3 class="section-panel-title" data-i18n-zh="峰明细" data-i18n-en="Peak details">Peak details</h3>
+        <p class="surface-note" data-i18n-zh="审阅质量、归一化强度、风险等级和库匹配结果。为高风险峰上传 MS2 数据。" data-i18n-en="Review mass, intensity, risk, and library matches. Upload MS2 data for high-risk peaks.">
           Review mass, intensity, risk, and library matches. Upload MS2 data for high-risk peaks.
         </p>
       </div>
-      <sl-tag size="small" pill>
-        <span data-i18n-zh="相对路径端点保持不变" data-i18n-en="Standard endpoints used">Standard endpoints used</span>
-      </sl-tag>
     </div>
 
     <div class="section-panel-body">
@@ -376,10 +373,9 @@
 
                 <div class="ms2-upload-actions">
                   <sl-button type="submit" variant="danger" size="small" class="analyze-trigger">
-                    <span data-i18n-zh="开始分析" data-i18n-en="Analyze">Analyze</span>
+                    <span data-i18n-zh="分析" data-i18n-en="Analyze">Analyze</span>
                     <sl-icon slot="suffix" name="arrow-right"></sl-icon>
                   </sl-button>
-                  <span class="action-note" data-i18n-zh="保留原 POST 表单上传" data-i18n-en="Uses standard upload">Uses standard upload</span>
                 </div>
               </form>
               {% else %}
@@ -394,7 +390,7 @@
             <td colspan="5">
               <div class="empty-state">
                 <sl-icon name="database-slash"></sl-icon>
-                <div data-i18n-zh="当前没有可展示的峰结果。" data-i18n-en="No peaks found.">No peaks found.</div>
+                <div data-i18n-zh="未找到峰。" data-i18n-en="No peaks found.">No peaks found.</div>
               </div>
             </td>
           </tr>
