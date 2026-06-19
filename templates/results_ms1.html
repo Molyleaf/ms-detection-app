@@ -285,6 +285,51 @@
     </div>
   </sl-card>
 
+  <section class="section-panel" style="margin-top: 1rem;">
+    <div class="section-panel-head">
+      <div>
+        <h3 class="section-panel-title" data-i18n-zh="适用域 (AD) 判别结果" data-i18n-en="Applicability Domain (AD) Evaluation">Applicability Domain (AD) Evaluation</h3>
+        <p class="surface-note" data-i18n-zh="评估上传的 MS1 数据是否处于当前模型的可信适用范围内。" data-i18n-en="Assess if the uploaded MS1 data is within the model's reliability range.">
+          Assess if the uploaded MS1 data is within the model's reliability range.
+        </p>
+      </div>
+      <sl-tag variant="{% if ad_result.within_ad %}success{% else %}danger{% endif %}" pill>
+        {% if ad_result.within_ad %}
+        <span data-i18n-zh="在适用域内" data-i18n-en="Inside AD">Inside AD</span>
+        {% else %}
+        <span data-i18n-zh="超出适用域" data-i18n-en="Outside AD">Outside AD</span>
+        {% endif %}
+      </sl-tag>
+    </div>
+    
+    <div class="section-panel-body" style="padding: 1.25rem; display: flex; flex-direction: column; gap: 0.75rem;">
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+        <div style="background: rgba(148, 163, 184, 0.05); padding: 1rem; border-radius: 0.75rem; border: 1px solid var(--tr-border);">
+          <div style="font-size: 0.8rem; color: var(--tr-muted); margin-bottom: 0.25rem;" data-i18n-zh="Leverage 值 / 阈值 h*" data-i18n-en="Leverage / Threshold h*">Leverage / Threshold h*</div>
+          <div style="font-family: var(--sl-font-mono); font-size: 1.25rem; font-weight: 700; color: var(--tr-text);">
+            {{ ad_result.leverage }} / {{ ad_result.h_star }}
+          </div>
+        </div>
+        <div style="background: rgba(148, 163, 184, 0.05); padding: 1rem; border-radius: 0.75rem; border: 1px solid var(--tr-border);">
+          <div style="font-size: 0.8rem; color: var(--tr-muted); margin-bottom: 0.25rem;" data-i18n-zh="置信度等级" data-i18n-en="Confidence Level">Confidence Level</div>
+          <div style="font-size: 1.25rem; font-weight: 700; color: {% if ad_result.confidence_level == 'High' %}var(--sl-color-success-600){% elif ad_result.confidence_level == 'Medium' %}var(--sl-color-warning-600){% else %}var(--sl-color-danger-600){% endif %};">
+            {{ ad_result.confidence_level }}
+          </div>
+        </div>
+        <div style="background: rgba(148, 163, 184, 0.05); padding: 1rem; border-radius: 0.75rem; border: 1px solid var(--tr-border);">
+          <div style="font-size: 0.8rem; color: var(--tr-muted); margin-bottom: 0.25rem;" data-i18n-zh="分析峰数量" data-i18n-en="Peaks Count">Peaks Count</div>
+          <div style="font-size: 1.25rem; font-weight: 700; color: var(--tr-text);">
+            {{ ad_result.num_peaks }}
+          </div>
+        </div>
+      </div>
+      <div style="margin-top: 0.5rem; font-size: 0.9rem; line-height: 1.5; color: var(--tr-text);">
+        <strong><span data-i18n-zh="评估意见：" data-i18n-en="Evaluation Note:">Evaluation Note:</span></strong>
+        <span>{{ ad_result.message }}</span>
+      </div>
+    </div>
+  </section>
+
   <section class="section-panel">
     <div class="section-panel-head">
       <div>
@@ -329,7 +374,7 @@
 
             <td>
               {% if peak.Output_Risk == 'Risk1' %}
-              <sl-badge variant="danger" pill data-risk-label="Risk1">Risk 1 (High)</sl-badge>
+              <sl-badge variant="danger" pill data-risk-label="Risk1">Risk 1 (Very High)</sl-badge>
               {% elif peak.Output_Risk == 'Risk2' %}
               <sl-badge variant="warning" pill data-risk-label="Risk2">Risk 2 (High)</sl-badge>
               {% elif peak.Output_Risk == 'Risk3' %}

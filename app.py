@@ -20,6 +20,7 @@ from core.ms1 import MS1Config, RiskConfig, process_l1_excel, risk_match_l1
 from core.ms2 import MS2Config, process_l2_excel_to_peaks
 from core.onnx_infer import ONNXClassifier
 from core.similarity import topk_library_matches
+from core.ad_checker import load_or_train_ad_checker
 
 # 从环境变量 URL_PREFIX 获取工作目录进行统一设置
 _work_dir = os.environ.get("URL_PREFIX")
@@ -36,6 +37,8 @@ ASSETS = {
     "spectrum_db": "data_processed/spectrum_db.joblib",
     "stats": "data_processed/stats.joblib",
     "onnx": "models/model.onnx",
+    "ad_checker": "data_processed/ad_checker_model.pkl",
+    "ad_train_data": "data/化合物-7-1.xlsx",
 }
 
 
@@ -73,7 +76,7 @@ def _risk_label_for_ui(output_risk: str) -> tuple[str, str]:
       Risk1/Risk2 => 高风险；Risk3/Safe => 未见异常
     """
     mapping = {
-        "Risk1": ("高风险", "danger"),
+        "Risk1": ("极高风险", "danger"),
         "Risk2": ("高风险", "warning"),
         "Risk3": ("未见异常", "success"),
         "Safe": ("未见异常", "success"),
@@ -163,7 +166,14 @@ def upload_ms1():
                 }
             )
 
-        return render_template("results_ms1.html", peaks=peaks_data, mode=mode)
+        # AD 适用域判别
+        ad_checker = load_or_train_ad_checker(
+            model_path=ASSETS["ad_checker"],
+            train_data_path=ASSETS["ad_train_data"]
+        )
+        ad_result = ad_checker.check_ad_from_file(ms1_in, verbose=False)
+
+        return render_template("results_ms1.html", peaks=peaks_data, mode=mode, ad_result=ad_result)
 
     except Exception as e:
         return f"处理失败: {e}", 500
@@ -213,6 +223,20 @@ def analyze_ms2():
             label = pred["label"]
             prob = float(pred["probability"])
 
+        # 增加 Confidence Assessment Criteria 符号
+        if prob <= 0.1:
+            prob_symbol = "---"
+        elif prob <= 0.3:
+            prob_symbol = "--"
+        elif prob <= 0.5:
+            prob_symbol = "-"
+        elif prob <= 0.7:
+            prob_symbol = "+"
+        elif prob <= 0.9:
+            prob_symbol = "++"
+        else:
+            prob_symbol = "+++"
+
         # 4) 显示文本（按你模板的 class 约定）
         if label == "Positive":
             risk_text, risk_class = "有危险", "danger"
@@ -253,6 +277,7 @@ def analyze_ms2():
             risk_text=risk_text,
             risk_class=risk_class,
             matches=matches,
+            prob_symbol=prob_symbol,
         )
 
     except Exception as e:

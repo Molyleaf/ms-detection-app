@@ -295,7 +295,7 @@
 
         <div class="confidence-label-row">
           <span data-i18n-zh="预测结果" data-i18n-en="Prediction Outcome">Prediction Outcome</span>
-          <span class="confidence-value">{{ prob }}%</span>
+          <span class="confidence-value">{{ prob }}% ({{ prob_symbol }})</span>
         </div>
 
         <sl-progress-bar
@@ -306,6 +306,12 @@
 
         <div class="match-note" data-i18n-zh="该数值为当前页面传入的原始模型概率，不改变现有计算逻辑。" data-i18n-en="This value uses the original model probability passed into the page without changing the existing calculation logic.">
           This value uses the original model probability passed into the page without changing the existing calculation logic.
+        </div>
+
+        <div class="confidence-criteria" style="font-size: 0.78rem; color: var(--tr-muted); margin-top: 0.5rem; line-height: 1.4; border-top: 1px solid var(--tr-border); padding-top: 0.5rem;">
+          <strong data-i18n-zh="置信度评估标准 (Confidence Assessment Criteria):" data-i18n-en="Confidence Assessment Criteria:">Confidence Assessment Criteria:</strong><br>
+          0-0.1: --- &nbsp;&nbsp; 0.1-0.3: -- &nbsp;&nbsp; 0.3-0.5: -<br>
+          0.5-0.7: + &nbsp;&nbsp; 0.7-0.9: ++ &nbsp;&nbsp; 0.9-1.0: +++
         </div>
       </div>
     </div>
