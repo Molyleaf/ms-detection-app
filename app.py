@@ -21,11 +21,16 @@ from core.ms2 import MS2Config, process_l2_excel_to_peaks
 from core.onnx_infer import ONNXClassifier
 from core.similarity import topk_library_matches
 
+# 从环境变量 URL_PREFIX 获取工作目录进行统一设置
+_work_dir = os.environ.get("URL_PREFIX")
+if _work_dir:
+    os.chdir(_work_dir)
+
 URL_PREFIX = "/TransIA"
 
 app = Flask(__name__, static_url_path=f"{URL_PREFIX}/static")
 
-# 运行时依赖的资产文件（Docker 内保持这些路径存在即可）
+# 运行时依赖的资产文件（在指定工作目录下寻找）
 ASSETS = {
     "risk_db": "data_processed/risk_db.joblib",
     "spectrum_db": "data_processed/spectrum_db.joblib",
@@ -42,7 +47,12 @@ def get_classifier() -> ONNXClassifier:
 
 @dataclass(frozen=True)
 class UploadPaths:
-    tmp_dir: str = "/tmp"
+    # 优先从环境变量读取临时目录，无设置时默认使用 /tmp，Windows 下使用当前目录的 tmp 目录以避开权限问题
+    tmp_dir: str = (
+        os.environ.get("TMP_DIR")
+        or os.environ.get("UPLOAD_DIR")
+        or ("/tmp" if os.name != "nt" else os.path.join(os.getcwd(), "tmp"))
+    )
 
     def ensure(self) -> None:
         os.makedirs(self.tmp_dir, exist_ok=True)
@@ -102,8 +112,8 @@ def upload_ms1():
         return "mode 参数错误（仅支持 positive/negative）", 400
 
     try:
-        # 1) 保存 MS1 上传文件
-        ms1_in = UPLOADS.new_file(f.filename)
+        # 1) 保存 MS1 上传文件（已添加文件名空值回退防空保护）
+        ms1_in = UPLOADS.new_file(f.filename or "upload.xlsx")
         f.save(ms1_in)
 
         # 2) MS1 预处理：归一化、同位素清理、低强度过滤（默认不落盘）
@@ -179,7 +189,8 @@ def analyze_ms2():
         return "未上传二级质谱文件", 400
 
     try:
-        ms2_in = UPLOADS.new_file(ms2_file.filename)
+        # 保存 MS2 上传文件（已添加文件名空值回退防空保护）
+        ms2_in = UPLOADS.new_file(ms2_file.filename or "upload_ms2.xlsx")
         ms2_file.save(ms2_in)
 
         # 2) MS2 预处理：输出 peaks 字符串（mass:intensity,...）

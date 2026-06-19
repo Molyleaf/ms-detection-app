@@ -228,7 +228,7 @@
 {% block content %}
 <div class="result-shell report-stack">
   <sl-breadcrumb>
-    <sl-breadcrumb-item href="./">
+    <sl-breadcrumb-item href="{{ url_for('index') }}">
       <sl-icon slot="prefix" name="house"></sl-icon>
       <span data-i18n-zh="首页" data-i18n-en="Home">Home</span>
     </sl-breadcrumb-item>
@@ -282,7 +282,7 @@
               <sl-icon slot="prefix" name="arrow-left"></sl-icon>
               <span data-i18n-zh="返回 MS1 结果" data-i18n-en="Back to MS1 Results">Back to MS1 Results</span>
             </sl-button>
-            <sl-button href="./" variant="primary" class="pill-button">
+            <sl-button href="{{ url_for('index') }}" variant="primary" class="pill-button">
               <sl-icon slot="prefix" name="house"></sl-icon>
               <span data-i18n-zh="返回首页" data-i18n-en="Return to Home">Return to Home</span>
             </sl-button>
@@ -393,7 +393,7 @@
       <sl-icon slot="prefix" name="arrow-left"></sl-icon>
       <span data-i18n-zh="返回上一页" data-i18n-en="Go Back">Go Back</span>
     </sl-button>
-    <sl-button href="./" variant="primary" class="pill-button">
+    <sl-button href="{{ url_for('index') }}" variant="primary" class="pill-button">
       <span data-i18n-zh="返回首页" data-i18n-en="Return to Home">Return to Home</span>
     </sl-button>
   </div>

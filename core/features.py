@@ -48,7 +48,7 @@ def parse_peaks(peaks: str):
 
 def build_graph_inputs(
         peaks: str,
-        stats: dict,
+        stats: dict[str, float],
         max_nodes: int = 10,
         node_dim: int = 10,
 ):

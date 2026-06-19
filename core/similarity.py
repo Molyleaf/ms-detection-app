@@ -1,5 +1,6 @@
 # core/similarity.py
 import os
+import typing
 import heapq
 from functools import lru_cache
 
@@ -91,7 +92,7 @@ def topk_library_matches(
     denom = int(test_mz.size)
 
     # (score, tie_breaker, payload)
-    heap: list[tuple[float, int, dict]] = []
+    heap: list[tuple[float, int, dict[str, typing.Any]]] = []
 
     for i, entry in enumerate(lib):
         lib_mz = entry["mz"]

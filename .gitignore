@@ -78,3 +78,5 @@ models/*.h5
 # Environment variables
 .env
 .env.local
+
+data_processed

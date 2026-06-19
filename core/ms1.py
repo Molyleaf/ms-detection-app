@@ -1,5 +1,6 @@
 # core/ms1.py
 import os
+import typing
 from dataclasses import dataclass
 from functools import lru_cache
 
@@ -211,7 +212,7 @@ def _nearest_in_sorted(arr: np.ndarray | None, x: float) -> tuple[float | None, 
 
 def match_one_mz(
         mz_value: float,
-        risk_mode_db: dict,
+        risk_mode_db: dict[str, typing.Any],
         risk0_threshold: float,
         risk1_threshold: float,
         risk23_threshold: float,

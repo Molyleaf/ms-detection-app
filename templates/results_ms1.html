@@ -227,7 +227,7 @@
 
 <div class="result-shell">
   <sl-breadcrumb>
-    <sl-breadcrumb-item href="./">
+    <sl-breadcrumb-item href="{{ url_for('index') }}">
       <sl-icon slot="prefix" name="house"></sl-icon>
       <span data-i18n-zh="首页" data-i18n-en="Home">Home</span>
     </sl-breadcrumb-item>
@@ -257,7 +257,7 @@
       </div>
 
       <div class="result-actions">
-        <sl-button href="./" variant="default" outline size="small" class="pill-button">
+        <sl-button href="{{ url_for('index') }}" variant="default" outline size="small" class="pill-button">
           <sl-icon slot="prefix" name="arrow-counterclockwise"></sl-icon>
           <span data-i18n-zh="重新上传" data-i18n-en="New Upload">New Upload</span>
         </sl-button>
@@ -352,7 +352,7 @@
 
             <td>
               {% if peak.Output_Risk in ['Risk1', 'Risk2'] %}
-              <form action="analyze_ms2" method="post" enctype="multipart/form-data" class="ms2-upload-form">
+              <form action="{{ url_for('analyze_ms2') }}" method="post" enctype="multipart/form-data" class="ms2-upload-form">
                 <input type="hidden" name="parent_mz" value="{{ peak.Mass }}">
                 <input type="hidden" name="actual_risk" value="{{ peak.Actual_Risk }}">
                 <input type="hidden" name="output_risk" value="{{ peak.Output_Risk }}">

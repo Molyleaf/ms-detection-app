@@ -2,6 +2,7 @@
 import os
 from collections import defaultdict
 from dataclasses import dataclass
+from typing import TypedDict, Any
 
 import joblib
 import numpy as np
@@ -34,11 +35,14 @@ def _parse_ku_line(line: str):
 
     mzs = []
     ints = []
+    # 仅当 m/z 和 intensity 都能成功转换为 float 时才加入，避免长度不一致导致后续排序越界
     for it in items:
         a, b = it.split(":", 1)
         try:
-            mzs.append(float(a.strip()))
-            ints.append(float(b.strip()))
+            mz_val = float(a.strip())
+            int_val = float(b.strip())
+            mzs.append(mz_val)
+            ints.append(int_val)
         except ValueError:
             continue
 
@@ -58,6 +62,14 @@ def _parse_ku_line(line: str):
     return smiles, mz_arr[order], int_arr[order]
 
 
+class ModeDb(TypedDict):
+    risk1_precise: list[float]
+    risk1_rounded: set[float]
+    risk1_rounded_to_precise: Any
+    risk2: set[float]
+    risk3: set[float]
+
+
 def build_all_assets(
         risk_xlsx: str = "化合物-7-1.xlsx",
         ku_txt: str = "ku-0619.txt",
@@ -69,10 +81,13 @@ def build_all_assets(
       3) 统计量 joblib
     """
 
+    # 从环境变量 URL_PREFIX 获取工作目录，若未设置则自动定位到项目根目录
+    work_dir = os.environ.get("URL_PREFIX") or os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
     paths = Paths(
-        base_dir="../data",
-        data_dir="../data",
-        out_dir="../data_processed"
+        base_dir=os.path.join(work_dir, "data"),
+        data_dir=os.path.join(work_dir, "data"),
+        out_dir=os.path.join(work_dir, "data_processed")
     )
     _ensure_dir(paths.out_dir)
 
@@ -97,7 +112,7 @@ def build_all_assets(
         "风险3": "risk3",
     }
 
-    def _empty_mode_db():
+    def _empty_mode_db() -> ModeDb:
         return {
             "risk1_precise": [],
             "risk1_rounded": set(),
@@ -106,10 +121,10 @@ def build_all_assets(
             "risk3": set(),
         }
 
-    risk_db = {"positive": _empty_mode_db(), "negative": _empty_mode_db()}
+    risk_db: dict[str, ModeDb] = {"positive": _empty_mode_db(), "negative": _empty_mode_db()}
 
     for sheet_name in xls.sheet_names:
-        mapped = sheet_map.get(sheet_name)
+        mapped = sheet_map.get(str(sheet_name))
         if mapped is None:
             continue
 
@@ -132,8 +147,12 @@ def build_all_assets(
                         risk_db[mode]["risk1_precise"].append(mz)
                         risk_db[mode]["risk1_rounded"].add(r2)
                         risk_db[mode]["risk1_rounded_to_precise"][r2].append(mz)
-                    elif mapped in ("risk2", "risk3"):
-                        risk_db[mode][mapped].add(round(mz, 2))
+                    elif mapped == "risk2":
+                        # 显式使用字面量键以避免 TypedDict 类型检查警告
+                        risk_db[mode]["risk2"].add(round(mz, 2))
+                    elif mapped == "risk3":
+                        # 显式使用字面量键以避免 TypedDict 类型检查警告
+                        risk_db[mode]["risk3"].add(round(mz, 2))
 
     # defaultdict -> dict（便于序列化与调试）
     for mode in ("positive", "negative"):
@@ -200,7 +219,7 @@ def build_all_assets(
     stats_out = os.path.join(paths.out_dir, "stats.joblib")
     joblib.dump(stats, stats_out)
 
-    print("✅ 转换完成：")
+    print("[OK] 转换完成：")
     print(f"  - {risk_out}")
     print(f"  - {spec_out}")
     print(f"  - {stats_out}")
