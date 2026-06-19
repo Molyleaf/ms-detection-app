@@ -53,7 +53,7 @@
     border-radius: 999px;
     background: var(--tr-accent-soft);
     color: var(--tr-accent);
-    font-size: 0.84rem;
+    font-size: 0.9rem;
     font-weight: 600;
   }
 
@@ -136,12 +136,12 @@
   }
 
   .upload-hint {
-    font-size: 0.88rem;
+    font-size: 0.95rem;
   }
 
   .file-name-display {
     min-height: 1.35rem;
-    font-size: 0.92rem;
+    font-size: 0.95rem;
     font-weight: 600;
   }
 
@@ -341,19 +341,19 @@
     <form action="{{ url_for('upload_ms1') }}" method="post" enctype="multipart/form-data" id="upload-form">
       <div class="transia-grid">
         <section class="transia-copy">
-          <div class="home-eyebrow" data-i18n-zh="MS1 工作流" data-i18n-en="MS1 Workflow">MS1 Workflow</div>
-          <h2 class="home-title" data-i18n-zh="上传原始 MS 数据并开始风险筛查" data-i18n-en="Upload raw MS data and start risk screening">Upload raw MS data and start risk screening</h2>
-          <p class="home-desc" data-i18n-zh="上传主质谱文件并选择离子模式，随后进入 MS1 筛查结果页。" data-i18n-en="Upload your primary mass spectrometry file, choose the ion mode, and continue to the MS1 screening results.">Upload your primary mass spectrometry file, choose the ion mode, and continue to the MS1 screening results.</p>
+          <div class="home-eyebrow" data-i18n-zh="MS1 工作流" data-i18n-en="MS1 workflow">MS1 workflow</div>
+          <h2 class="home-title" data-i18n-zh="上传原始 MS 数据并开始风险筛查" data-i18n-en="Upload MS data to screen for risks">Upload MS data to screen for risks</h2>
+          <p class="home-desc" data-i18n-zh="上传主质谱文件并选择离子模式，随后进入 MS1 筛查结果页。" data-i18n-en="Upload your primary mass spectrometry file and select the ion mode to view MS1 screening results.">Upload your primary mass spectrometry file and select the ion mode to view MS1 screening results.</p>
 
           <div id="upload-area" class="upload-area" tabindex="0" role="button">
             <input type="file" id="ms1-file-input" name="file" class="file-input-hidden" required accept=".xlsx, .xls, .csv">
 
             <sl-icon name="cloud-arrow-up" class="upload-icon"></sl-icon>
-            <div class="upload-title" data-i18n-zh="点击或拖拽文件到这里" data-i18n-en="Click or drag a file here">
-              Click or drag a file here
+            <div class="upload-title" data-i18n-zh="点击或拖拽文件到这里" data-i18n-en="Drag and drop or click to upload">
+              Drag and drop or click to upload
             </div>
-            <div class="upload-hint" data-i18n-zh="支持 .xlsx、.xls、.csv" data-i18n-en="Supports .xlsx, .xls, .csv">
-              Supports .xlsx, .xls, .csv
+            <div class="upload-hint" data-i18n-zh="支持 .xlsx、.xls、.csv" data-i18n-en="Supported formats: .xlsx, .xls, .csv">
+              Supported formats: .xlsx, .xls, .csv
             </div>
             <div id="file-name-display" class="file-name-display">No file selected</div>
           </div>
@@ -362,12 +362,12 @@
         <section class="transia-panel">
           <div class="panel-head">
             <h3 class="panel-title" data-i18n-zh="分析参数" data-i18n-en="Analysis settings">Analysis settings</h3>
-            <p class="mode-help" data-i18n-zh="选择与上传文件一致的离子模式。" data-i18n-en="Choose the ion mode that matches the uploaded file.">Choose the ion mode that matches the uploaded file.</p>
+            <p class="mode-help" data-i18n-zh="选择与上传文件一致的离子模式。" data-i18n-en="Select the ion mode that matches your uploaded file.">Select the ion mode that matches your uploaded file.</p>
           </div>
 
           <div class="mode-card">
-            <label class="mode-label" data-i18n-zh="步骤 2：离子模式" data-i18n-en="Step 2: Ion Mode">
-              Step 2: Ion Mode
+            <label class="mode-label" data-i18n-zh="步骤 2：离子模式" data-i18n-en="Ion mode">
+              Ion mode
             </label>
             <sl-radio-group name="mode" value="positive">
               <sl-radio value="positive" data-i18n-zh="正离子 (+)" data-i18n-en="Positive (+)">Positive (+)</sl-radio>
@@ -377,12 +377,12 @@
 
           <div class="panel-meta">
             <sl-tag size="small" pill>.xlsx / .xls / .csv</sl-tag>
-            <div class="panel-note" data-i18n-zh="该页面已压缩为单屏工作台，适配移动端。" data-i18n-en="This page is optimized as a compact single-screen workspace.">This page is optimized as a compact single-screen workspace.</div>
+            <div class="panel-note" data-i18n-zh="该页面已压缩为单屏工作台，适配移动端。" data-i18n-en="Optimized for mobile and desktop screens.">Optimized for mobile and desktop screens.</div>
           </div>
 
           <sl-button variant="primary" type="submit" class="submit-button" size="large" pill>
             <sl-icon name="search" slot="prefix"></sl-icon>
-            <span data-i18n-zh="开始分析" data-i18n-en="Start Analysis">Start Analysis</span>
+            <span data-i18n-zh="开始分析" data-i18n-en="Start analysis">Start analysis</span>
           </sl-button>
         </section>
       </div>

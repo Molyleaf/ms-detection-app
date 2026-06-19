@@ -14,7 +14,7 @@
   .result-table thead th {
     padding: 0.95rem 1rem;
     text-align: left;
-    font-size: 0.82rem;
+    font-size: 0.875rem;
     font-weight: 700;
     letter-spacing: 0.04em;
     text-transform: uppercase;
@@ -55,7 +55,7 @@
   .mini-file-name,
   .action-note {
     color: var(--tr-muted);
-    font-size: 0.82rem;
+    font-size: 0.875rem;
     line-height: 1.5;
   }
 
@@ -120,7 +120,7 @@
     align-items: center;
     gap: 0.4rem;
     color: var(--tr-muted);
-    font-size: 0.84rem;
+    font-size: 0.9rem;
   }
 
   .matched-value {
@@ -238,7 +238,7 @@
   <sl-card class="result-hero-card">
     <div class="result-hero">
       <div class="result-copy">
-        <div class="result-kicker" data-i18n-zh="MS1 筛查结果" data-i18n-en="MS1 Screening Results">MS1 Screening Results</div>
+        <div class="result-kicker" data-i18n-zh="MS1 筛查结果" data-i18n-en="MS1 screening results">MS1 screening results</div>
 
         <div class="result-chip-row">
           <sl-tag variant="primary" size="small" pill data-mode-label="{{ mode }}">{{ mode|capitalize }} Mode</sl-tag>
@@ -248,40 +248,40 @@
           </sl-tag>
         </div>
 
-        <h2 class="result-heading" data-i18n-zh="按峰位逐条审阅风险输出，并在需要时衔接 MS2 深度分析" data-i18n-en="Review each peak-level risk output and branch into MS2 deep analysis when needed">
-          Review each peak-level risk output and branch into MS2 deep analysis when needed
+        <h2 class="result-heading" data-i18n-zh="按峰位逐条审阅风险输出，并在需要时衔接 MS2 深度分析" data-i18n-en="Review peak risk outputs and proceed to MS2 analysis if needed.">
+          Review peak risk outputs and proceed to MS2 analysis if needed.
         </h2>
 
-        <p class="result-supporting" data-i18n-zh="当前页面保留原有筛查逻辑与表单提交方式，仅统一为与首页一致的工作台式结果布局。排序逻辑仍为按质量升序，并使用 ±1Da 窗口聚类。" data-i18n-en="This page keeps the original screening logic and form submission flow while aligning the layout with the home workspace. Ordering still follows ascending mass with +/-1Da window clustering.">
-          This page keeps the original screening logic and form submission flow while aligning the layout with the home workspace. Ordering still follows ascending mass with +/-1Da window clustering.
+        <p class="result-supporting" data-i18n-zh="当前页面保留原有筛查逻辑与表单提交方式，仅统一为与首页一致的工作台式结果布局。排序逻辑仍为按质量升序，并使用 ±1Da 窗口聚类。" data-i18n-en="Data is clustered using a ±1 Da window and ordered by ascending mass.">
+          Data is clustered using a ±1 Da window and ordered by ascending mass.
         </p>
       </div>
 
       <div class="result-actions">
         <sl-button href="{{ url_for('index') }}" variant="default" outline size="small" class="pill-button">
           <sl-icon slot="prefix" name="arrow-counterclockwise"></sl-icon>
-          <span data-i18n-zh="重新上传" data-i18n-en="New Upload">New Upload</span>
+          <span data-i18n-zh="重新上传" data-i18n-en="New upload">New upload</span>
         </sl-button>
       </div>
     </div>
 
     <div class="metric-grid">
       <div class="metric-card">
-        <div class="metric-label" data-i18n-zh="峰数量" data-i18n-en="Peak Count">Peak Count</div>
+        <div class="metric-label" data-i18n-zh="峰数量" data-i18n-en="Peak count">Peak count</div>
         <div class="metric-value">{{ peaks|length }}</div>
-        <div class="metric-note" data-i18n-zh="本次筛查进入结果页的总峰数。" data-i18n-en="Total number of peaks listed in this screening run.">Total number of peaks listed in this screening run.</div>
+        <div class="metric-note" data-i18n-zh="本次筛查进入结果页的总峰数。" data-i18n-en="Total peaks found in this screening.">Total peaks found in this screening.</div>
       </div>
 
       <div class="metric-card">
-        <div class="metric-label" data-i18n-zh="高风险输出" data-i18n-en="High-Risk Output">High-Risk Output</div>
+        <div class="metric-label" data-i18n-zh="高风险输出" data-i18n-en="High risk">High risk</div>
         <div class="metric-value">{{ summary.high_risk }}</div>
-        <div class="metric-note" data-i18n-zh="需要补充上传 MS2 文件继续深度分析的峰。" data-i18n-en="Peaks that require an MS2 upload for deep analysis.">Peaks that require an MS2 upload for deep analysis.</div>
+        <div class="metric-note" data-i18n-zh="需要补充上传 MS2 文件继续深度分析的峰。" data-i18n-en="Peaks requiring MS2 analysis.">Peaks requiring MS2 analysis.</div>
       </div>
 
       <div class="metric-card">
-        <div class="metric-label" data-i18n-zh="库匹配命中" data-i18n-en="Library Hits">Library Hits</div>
+        <div class="metric-label" data-i18n-zh="库匹配命中" data-i18n-en="Library hits">Library hits</div>
         <div class="metric-value">{{ summary.matched }}</div>
-        <div class="metric-note" data-i18n-zh="已在库中找到候选匹配质量的峰数量。" data-i18n-en="Peaks with a candidate matched mass found in the library.">Peaks with a candidate matched mass found in the library.</div>
+        <div class="metric-note" data-i18n-zh="已在库中找到候选匹配质量的峰数量。" data-i18n-en="Peaks matching candidates in the library.">Peaks matching candidates in the library.</div>
       </div>
     </div>
   </sl-card>
@@ -291,13 +291,13 @@
   <section class="section-panel">
     <div class="section-panel-head">
       <div>
-        <h3 class="section-panel-title" data-i18n-zh="峰位明细" data-i18n-en="Peak Review Table">Peak Review Table</h3>
-        <p class="surface-note" data-i18n-zh="逐行查看质量、归一化强度、风险输出与库匹配结果。仅当结果为高风险时，保留原有的 MS2 上传入口。" data-i18n-en="Inspect mass, normalized intensity, risk output, and library matches row by row. The original MS2 upload action remains available only for high-risk outputs.">
-          Inspect mass, normalized intensity, risk output, and library matches row by row. The original MS2 upload action remains available only for high-risk outputs.
+        <h3 class="section-panel-title" data-i18n-zh="峰位明细" data-i18n-en="Peak details">Peak details</h3>
+        <p class="surface-note" data-i18n-zh="逐行查看质量、归一化强度、风险输出与库匹配结果。仅当结果为高风险时，保留原有的 MS2 上传入口。" data-i18n-en="Review mass, intensity, risk, and library matches. Upload MS2 data for high-risk peaks.">
+          Review mass, intensity, risk, and library matches. Upload MS2 data for high-risk peaks.
         </p>
       </div>
       <sl-tag size="small" pill>
-        <span data-i18n-zh="相对路径端点保持不变" data-i18n-en="Relative endpoints unchanged">Relative endpoints unchanged</span>
+        <span data-i18n-zh="相对路径端点保持不变" data-i18n-en="Standard endpoints used">Standard endpoints used</span>
       </sl-tag>
     </div>
 
@@ -307,10 +307,10 @@
           <thead>
           <tr>
             <th data-i18n-zh="质量 (m/z)" data-i18n-en="Mass (m/z)">Mass (m/z)</th>
-            <th data-i18n-zh="归一化强度" data-i18n-en="Normalized Intensity">Normalized Intensity</th>
-            <th data-i18n-zh="输出风险" data-i18n-en="Output Risk">Output Risk</th>
-            <th data-i18n-zh="库匹配 (m/z)" data-i18n-en="Library Match (m/z)">Library Match (m/z)</th>
-            <th data-i18n-zh="深度分析 (MS2)" data-i18n-en="Deep Analysis (MS2)">Deep Analysis (MS2)</th>
+            <th data-i18n-zh="归一化强度" data-i18n-en="Normalized intensity">Normalized intensity</th>
+            <th data-i18n-zh="输出风险" data-i18n-en="Risk level">Risk level</th>
+            <th data-i18n-zh="库匹配 (m/z)" data-i18n-en="Library match (m/z)">Library match (m/z)</th>
+            <th data-i18n-zh="深度分析 (MS2)" data-i18n-en="MS2 analysis">MS2 analysis</th>
           </tr>
           </thead>
           <tbody>
@@ -319,7 +319,7 @@
             <td>
               <div class="mass-cell">
                 <span class="mass-main">{{ "%.4f"|format(peak.Mass) }}</span>
-                <span class="mass-note" data-i18n-zh="质量升序展示" data-i18n-en="Shown in ascending mass order">Shown in ascending mass order</span>
+                <span class="mass-note" data-i18n-zh="质量升序展示" data-i18n-en="Ascending mass order">Ascending mass order</span>
               </div>
             </td>
 
@@ -348,7 +348,7 @@
               {% if peak.Matched_Mass > 0 %}
               <div class="matched-value">
                 <span class="matched-main">{{ "%.4f"|format(peak.Matched_Mass) }}</span>
-                <span class="matched-note" data-i18n-zh="命中候选库质量" data-i18n-en="Candidate library mass found">Candidate library mass found</span>
+                <span class="matched-note" data-i18n-zh="命中候选库质量" data-i18n-en="Match found in library">Match found in library</span>
               </div>
               {% else %}
               <span class="row-empty" data-i18n-zh="暂无匹配" data-i18n-en="No match">No match</span>
@@ -379,12 +379,12 @@
                     <span data-i18n-zh="开始分析" data-i18n-en="Analyze">Analyze</span>
                     <sl-icon slot="suffix" name="arrow-right"></sl-icon>
                   </sl-button>
-                  <span class="action-note" data-i18n-zh="保留原 POST 表单上传" data-i18n-en="Original POST form upload preserved">Original POST form upload preserved</span>
+                  <span class="action-note" data-i18n-zh="保留原 POST 表单上传" data-i18n-en="Uses standard upload">Uses standard upload</span>
                 </div>
               </form>
               {% else %}
               <sl-tag size="small" pill>
-                <span data-i18n-zh="无需操作" data-i18n-en="No action required">No action required</span>
+                <span data-i18n-zh="无需操作" data-i18n-en="No action needed">No action needed</span>
               </sl-tag>
               {% endif %}
             </td>
@@ -394,7 +394,7 @@
             <td colspan="5">
               <div class="empty-state">
                 <sl-icon name="database-slash"></sl-icon>
-                <div data-i18n-zh="当前没有可展示的峰结果。" data-i18n-en="There are no peak results to display right now.">There are no peak results to display right now.</div>
+                <div data-i18n-zh="当前没有可展示的峰结果。" data-i18n-en="No peaks found.">No peaks found.</div>
               </div>
             </td>
           </tr>

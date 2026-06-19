@@ -89,7 +89,7 @@
   .match-note,
   .smiles-source-label {
     color: var(--tr-muted);
-    font-size: 0.84rem;
+    font-size: 0.9rem;
   }
 
   .confidence-value {
@@ -244,21 +244,21 @@
           <sl-icon name="shield-slash"></sl-icon>
         </div>
         <div class="risk-copy">
-          <div class="result-kicker" data-i18n-zh="适用域评估未通过" data-i18n-en="AD Evaluation Failed">AD Evaluation Failed</div>
-          <h2 class="risk-title" data-i18n-zh="超出适用域，不计算 MS2" data-i18n-en="Outside AD, MS2 calculation skipped">
-            Outside AD, MS2 calculation skipped
+          <div class="result-kicker" data-i18n-zh="适用域评估未通过" data-i18n-en="AD evaluation failed">AD evaluation failed</div>
+          <h2 class="risk-title" data-i18n-zh="超出适用域，不计算 MS2" data-i18n-en="Outside applicability domain, MS2 calculation skipped">
+            Outside applicability domain, MS2 calculation skipped
           </h2>
-          <p class="risk-description" data-i18n-zh="该谱图超出模型适用域，预测结果不确定性高，已阻断后续 MS2 分析与库回溯计算。" data-i18n-en="The spectrum is outside the model applicability domain. Further MS2 analysis and library traceback have been aborted to prevent unreliable predictions.">
-            The spectrum is outside the model applicability domain. Further MS2 analysis and library traceback have been aborted to prevent unreliable predictions.
+          <p class="risk-description" data-i18n-zh="该谱图超出模型适用域，预测结果不确定性高，已阻断后续 MS2 分析与库回溯计算。" data-i18n-en="The spectrum is outside the model's applicability domain. MS2 analysis and library traceback are skipped to avoid unreliable predictions.">
+            The spectrum is outside the model's applicability domain. MS2 analysis and library traceback are skipped to avoid unreliable predictions.
           </p>
           <div class="action-row">
             <sl-button type="button" variant="default" outline class="pill-button" onclick="history.back()">
               <sl-icon slot="prefix" name="arrow-left"></sl-icon>
-              <span data-i18n-zh="返回 MS1 结果" data-i18n-en="Back to MS1 Results">Back to MS1 Results</span>
+              <span data-i18n-zh="返回 MS1 结果" data-i18n-en="Back to MS1 results">Back to MS1 results</span>
             </sl-button>
             <sl-button href="{{ url_for('index') }}" variant="primary" class="pill-button">
               <sl-icon slot="prefix" name="house"></sl-icon>
-              <span data-i18n-zh="返回首页" data-i18n-en="Return to Home">Return to Home</span>
+              <span data-i18n-zh="返回首页" data-i18n-en="Return to home">Return to home</span>
             </sl-button>
           </div>
         </div>
@@ -272,7 +272,7 @@
         </div>
 
         <div class="risk-copy">
-          <div class="result-kicker" data-i18n-zh="MS2 深度分析报告" data-i18n-en="MS2 Deep Analysis Report">MS2 Deep Analysis Report</div>
+          <div class="result-kicker" data-i18n-zh="MS2 深度分析报告" data-i18n-en="MS2 analysis report">MS2 analysis report</div>
 
           <div class="result-chip-row">
             <sl-tag size="small" pill>
@@ -280,35 +280,35 @@
               <span> {{ parent_mz }}</span>
             </sl-tag>
             <sl-tag size="small" pill>
-              <span data-i18n-zh="库匹配数" data-i18n-en="Library Matches">Library Matches</span>
+              <span data-i18n-zh="库匹配数" data-i18n-en="Library matches">Library matches</span>
               <span> {{ matches|length }}</span>
             </sl-tag>
           </div>
 
           {% if risk_class == 'danger' %}
-          <h2 class="risk-title" data-i18n-zh="检出高风险，需要优先处理该母离子对应的候选物" data-i18n-en="High risk detected and this parent ion should be prioritized for follow-up">
-            High risk detected and this parent ion should be prioritized for follow-up
+          <h2 class="risk-title" data-i18n-zh="检出高风险，需要优先处理该母离子对应的候选物" data-i18n-en="High risk detected. Prioritize this parent ion for review.">
+            High risk detected. Prioritize this parent ion for review.
           </h2>
-          <p class="risk-description" data-i18n-zh="MS2 模型已在当前母离子上给出高风险判断。下方保留原有库回溯结果，便于继续比对候选结构。" data-i18n-en="The MS2 model produced a high-risk outcome for this parent ion. The original library traceback results remain below for candidate structure review.">
-            The MS2 model produced a high-risk outcome for this parent ion. The original library traceback results remain below for candidate structure review.
+          <p class="risk-description" data-i18n-zh="MS2 模型已在当前母离子上给出高风险判断。下方保留原有库回溯结果，便于继续比对候选结构。" data-i18n-en="The MS2 model flagged this parent ion as high risk. Review candidate structures below.">
+            The MS2 model flagged this parent ion as high risk. Review candidate structures below.
           </p>
           {% else %}
-          <h2 class="risk-title" data-i18n-zh="当前母离子未检出新增高风险信号，可继续核对候选结构" data-i18n-en="No additional high-risk signal was found for this parent ion">
-            No additional high-risk signal was found for this parent ion
+          <h2 class="risk-title" data-i18n-zh="当前母离子未检出新增高风险信号，可继续核对候选结构" data-i18n-en="No high risk found for this parent ion.">
+            No high risk found for this parent ion.
           </h2>
-          <p class="risk-description" data-i18n-zh="MS2 模型给出了安全结果，但下方仍保留原有库回溯内容，便于人工复核匹配分子。" data-i18n-en="The MS2 model returned a safe result, while the original library traceback content remains available for manual confirmation.">
-            The MS2 model returned a safe result, while the original library traceback content remains available for manual confirmation.
+          <p class="risk-description" data-i18n-zh="MS2 模型给出了安全结果，但下方仍保留原有库回溯内容，便于人工复核匹配分子。" data-i18n-en="The MS2 model returned a safe result. Review candidate structures below.">
+            The MS2 model returned a safe result. Review candidate structures below.
           </p>
           {% endif %}
 
           <div class="action-row">
             <sl-button type="button" variant="default" outline class="pill-button" onclick="history.back()">
               <sl-icon slot="prefix" name="arrow-left"></sl-icon>
-              <span data-i18n-zh="返回 MS1 结果" data-i18n-en="Back to MS1 Results">Back to MS1 Results</span>
+              <span data-i18n-zh="返回 MS1 结果" data-i18n-en="Back to MS1 results">Back to MS1 results</span>
             </sl-button>
             <sl-button href="{{ url_for('index') }}" variant="primary" class="pill-button">
               <sl-icon slot="prefix" name="house"></sl-icon>
-              <span data-i18n-zh="返回首页" data-i18n-en="Return to Home">Return to Home</span>
+              <span data-i18n-zh="返回首页" data-i18n-en="Return to home">Return to home</span>
             </sl-button>
           </div>
         </div>
@@ -317,19 +317,19 @@
 
       <div class="confidence-panel">
         {% if not ad_result.within_ad %}
-        <div class="confidence-caption" data-i18n-zh="适用域指标" data-i18n-en="Applicability Domain Metric">Applicability Domain Metric</div>
+        <div class="confidence-caption" data-i18n-zh="适用域指标" data-i18n-en="Applicability domain metric">Applicability domain metric</div>
         <div class="confidence-label-row">
           <span data-i18n-zh="Leverage 值 / 阈值 h*" data-i18n-en="Leverage / Threshold h*">Leverage / Threshold h*</span>
           <span class="confidence-value" style="color: var(--sl-color-danger-600);">{{ ad_result.leverage }} / {{ ad_result.h_star }}</span>
         </div>
-        <div class="match-note" data-i18n-zh="当前 Leverage 超过阈值，表示该样本的输入特征分布与训练集差异过大。" data-i18n-en="Current Leverage exceeds threshold, meaning input distribution differs significantly from training data.">
-          Current Leverage exceeds threshold, meaning input distribution differs significantly from training data.
+        <div class="match-note" data-i18n-zh="当前 Leverage 超过阈值，表示该样本的输入特征分布与训练集差异过大。" data-i18n-en="Leverage exceeds the threshold. The input distribution differs significantly from the training data.">
+          Leverage exceeds the threshold. The input distribution differs significantly from the training data.
         </div>
         {% else %}
-        <div class="confidence-caption" data-i18n-zh="模型置信概率" data-i18n-en="Model Confidence">Model Confidence</div>
+        <div class="confidence-caption" data-i18n-zh="模型置信概率" data-i18n-en="Model confidence">Model confidence</div>
 
         <div class="confidence-label-row">
-          <span data-i18n-zh="预测结果" data-i18n-en="Prediction Outcome">Prediction Outcome</span>
+          <span data-i18n-zh="预测结果" data-i18n-en="Prediction outcome">Prediction outcome</span>
           <span class="confidence-value">{{ prob }}% ({{ prob_symbol }})</span>
         </div>
 
@@ -339,12 +339,12 @@
           style="height: 12px;">
         </sl-progress-bar>
 
-        <div class="match-note" data-i18n-zh="该数值为当前页面传入的原始模型概率，不改变现有计算逻辑。" data-i18n-en="This value uses the original model probability passed into the page without changing the existing calculation logic.">
-          This value uses the original model probability passed into the page without changing the existing calculation logic.
+        <div class="match-note" data-i18n-zh="该数值为当前页面传入的原始模型概率，不改变现有计算逻辑。" data-i18n-en="Original model probability.">
+          Original model probability.
         </div>
 
-        <div class="confidence-criteria" style="font-size: 0.78rem; color: var(--tr-muted); margin-top: 0.5rem; line-height: 1.4; border-top: 1px solid var(--tr-border); padding-top: 0.5rem;">
-          <strong data-i18n-zh="置信度评估标准 (Confidence Assessment Criteria):" data-i18n-en="Confidence Assessment Criteria:">Confidence Assessment Criteria:</strong><br>
+        <div class="confidence-criteria" style="font-size: 0.85rem; color: var(--tr-muted); margin-top: 0.5rem; line-height: 1.4; border-top: 1px solid var(--tr-border); padding-top: 0.5rem;">
+          <strong data-i18n-zh="置信度评估标准 (Confidence Assessment Criteria):" data-i18n-en="Confidence assessment criteria:">Confidence assessment criteria:</strong><br>
           0-0.1: --- &nbsp;&nbsp; 0.1-0.3: -- &nbsp;&nbsp; 0.3-0.5: -<br>
           0.5-0.7: + &nbsp;&nbsp; 0.7-0.9: ++ &nbsp;&nbsp; 0.9-1.0: +++
         </div>
@@ -356,11 +356,11 @@
       <div class="metric-card">
         <div class="metric-label" data-i18n-zh="母离子 m/z" data-i18n-en="Parent m/z">Parent m/z</div>
         <div class="metric-value">{{ parent_mz }}</div>
-        <div class="metric-note" data-i18n-zh="沿用上一页传入的待分析母离子质量。" data-i18n-en="The parent ion mass passed from the previous step.">The parent ion mass passed from the previous step.</div>
+        <div class="metric-note" data-i18n-zh="沿用上一页传入的待分析母离子质量。" data-i18n-en="Parent ion mass from the previous step.">Parent ion mass from the previous step.</div>
       </div>
 
       <div class="metric-card">
-        <div class="metric-label" data-i18n-zh="适用域状态" data-i18n-en="AD Status">AD Status</div>
+        <div class="metric-label" data-i18n-zh="适用域状态" data-i18n-en="AD status">AD status</div>
         <div class="metric-value">
           {% if ad_result.within_ad %}
           <span data-i18n-zh="在适用域内" data-i18n-en="Inside AD" style="color: var(--sl-color-success-600);">Inside AD</span>
@@ -368,13 +368,13 @@
           <span data-i18n-zh="超出适用域" data-i18n-en="Outside AD" style="color: var(--sl-color-danger-600);">Outside AD</span>
           {% endif %}
         </div>
-        <div class="metric-note" data-i18n-zh="模型在当前样本下的可信适用域评定。" data-i18n-en="Model reliability applicability domain checker rating.">Model reliability applicability domain checker rating.</div>
+        <div class="metric-note" data-i18n-zh="模型在当前样本下的可信适用域评定。" data-i18n-en="Applicability domain evaluation result.">Applicability domain evaluation result.</div>
       </div>
 
       <div class="metric-card">
-        <div class="metric-label" data-i18n-zh="匹配候选数" data-i18n-en="Candidate Matches">Candidate Matches</div>
+        <div class="metric-label" data-i18n-zh="匹配候选数" data-i18n-en="Candidate matches">Candidate matches</div>
         <div class="metric-value">{% if matches %}{{ matches|length }}{% else %}0{% endif %}</div>
-        <div class="metric-note" data-i18n-zh="库回溯区中可供人工复核的候选分子数量。" data-i18n-en="Number of candidate molecules available in the traceback section below.">Number of candidate molecules available in the traceback section below.</div>
+        <div class="metric-note" data-i18n-zh="库回溯区中可供人工复核的候选分子数量。" data-i18n-en="Number of candidate molecules found.">Number of candidate molecules found.</div>
       </div>
     </div>
   </sl-card>
@@ -382,9 +382,9 @@
   <section class="section-panel">
     <div class="section-panel-head">
       <div>
-        <h3 class="section-panel-title" data-i18n-zh="适用域 (AD) 判别结果" data-i18n-en="Applicability Domain (AD) Evaluation">Applicability Domain (AD) Evaluation</h3>
-        <p class="surface-note" data-i18n-zh="评估上传的二级数据是否处于当前模型的可信适用范围内。" data-i18n-en="Assess if the uploaded MS2 data is within the model's reliability range.">
-          Assess if the uploaded MS2 data is within the model's reliability range.
+        <h3 class="section-panel-title" data-i18n-zh="适用域 (AD) 判别结果" data-i18n-en="Applicability domain (AD) evaluation">Applicability domain (AD) evaluation</h3>
+        <p class="surface-note" data-i18n-zh="评估上传的二级数据是否处于当前模型的可信适用范围内。" data-i18n-en="Checks if the MS2 data is within the model's reliability range.">
+          Checks if the MS2 data is within the model's reliability range.
         </p>
       </div>
       <sl-tag variant="{% if ad_result.within_ad %}success{% else %}danger{% endif %}" pill>
@@ -399,26 +399,26 @@
     <div class="section-panel-body" style="padding: 1.25rem; display: flex; flex-direction: column; gap: 0.75rem;">
       <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
         <div style="background: rgba(148, 163, 184, 0.05); padding: 1rem; border-radius: 0.75rem; border: 1px solid var(--tr-border);">
-          <div style="font-size: 0.8rem; color: var(--tr-muted); margin-bottom: 0.25rem;" data-i18n-zh="Leverage 值 / 阈值 h*" data-i18n-en="Leverage / Threshold h*">Leverage / Threshold h*</div>
+          <div style="font-size: 0.85rem; color: var(--tr-muted); margin-bottom: 0.25rem;" data-i18n-zh="Leverage 值 / 阈值 h*" data-i18n-en="Leverage / Threshold h*">Leverage / Threshold h*</div>
           <div style="font-family: var(--sl-font-mono); font-size: 1.25rem; font-weight: 700; color: var(--tr-text);">
             {{ ad_result.leverage }} / {{ ad_result.h_star }}
           </div>
         </div>
         <div style="background: rgba(148, 163, 184, 0.05); padding: 1rem; border-radius: 0.75rem; border: 1px solid var(--tr-border);">
-          <div style="font-size: 0.8rem; color: var(--tr-muted); margin-bottom: 0.25rem;" data-i18n-zh="置信度等级" data-i18n-en="Confidence Level">Confidence Level</div>
+          <div style="font-size: 0.85rem; color: var(--tr-muted); margin-bottom: 0.25rem;" data-i18n-zh="置信度等级" data-i18n-en="Confidence level">Confidence level</div>
           <div style="font-size: 1.25rem; font-weight: 700; color: {% if ad_result.confidence_level == 'High' %}var(--sl-color-success-600){% elif ad_result.confidence_level == 'Medium' %}var(--sl-color-warning-600){% else %}var(--sl-color-danger-600){% endif %};">
             {{ ad_result.confidence_level }}
           </div>
         </div>
         <div style="background: rgba(148, 163, 184, 0.05); padding: 1rem; border-radius: 0.75rem; border: 1px solid var(--tr-border);">
-          <div style="font-size: 0.8rem; color: var(--tr-muted); margin-bottom: 0.25rem;" data-i18n-zh="分析峰数量" data-i18n-en="Peaks Count">Peaks Count</div>
+          <div style="font-size: 0.85rem; color: var(--tr-muted); margin-bottom: 0.25rem;" data-i18n-zh="分析峰数量" data-i18n-en="Peaks count">Peaks count</div>
           <div style="font-size: 1.25rem; font-weight: 700; color: var(--tr-text);">
             {{ ad_result.num_peaks }}
           </div>
         </div>
       </div>
-      <div style="margin-top: 0.5rem; font-size: 0.9rem; line-height: 1.5; color: var(--tr-text);">
-        <strong><span data-i18n-zh="评估意见：" data-i18n-en="Evaluation Note:">Evaluation Note:</span></strong>
+      <div style="margin-top: 0.5rem; font-size: 0.95rem; line-height: 1.5; color: var(--tr-text);">
+        <strong><span data-i18n-zh="评估意见：" data-i18n-en="Evaluation note:">Evaluation note:</span></strong>
         <span>{{ ad_result.message }}</span>
       </div>
     </div>
@@ -427,14 +427,14 @@
   <section class="section-panel">
     <div class="section-panel-head">
       <div>
-        <h3 class="section-panel-title" data-i18n-zh="库回溯结果" data-i18n-en="Library Traceback Results">Library Traceback Results</h3>
-        <p class="surface-note" data-i18n-zh="保留原有 SMILES 结构绘制与候选列表，只将明细呈现统一为结果卡片样式。" data-i18n-en="The original SMILES rendering and candidate list are preserved while the presentation is aligned into result cards.">
-          The original SMILES rendering and candidate list are preserved while the presentation is aligned into result cards.
+        <h3 class="section-panel-title" data-i18n-zh="库回溯结果" data-i18n-en="Library traceback results">Library traceback results</h3>
+        <p class="surface-note" data-i18n-zh="保留原有 SMILES 结构绘制与候选列表，只将明细呈现统一为结果卡片样式。" data-i18n-en="Review candidate SMILES structures below.">
+          Review candidate SMILES structures below.
         </p>
       </div>
 
       <sl-tag size="small" pill>
-        <span data-i18n-zh="SMILES 预览" data-i18n-en="SMILES Preview">SMILES Preview</span>
+        <span data-i18n-zh="SMILES 预览" data-i18n-en="SMILES preview">SMILES preview</span>
       </sl-tag>
     </div>
 
@@ -446,7 +446,7 @@
           <div class="match-card-head">
             <div>
               <h4 class="match-card-title" data-i18n-zh="匹配 #{{ loop.index }}" data-i18n-en="Match #{{ loop.index }}">Match #{{ loop.index }}</h4>
-              <div class="match-note" data-i18n-zh="候选结构来自原始库回溯结果" data-i18n-en="Candidate structure from the original library traceback">Candidate structure from the original library traceback</div>
+              <div class="match-note" data-i18n-zh="候选结构来自原始库回溯结果" data-i18n-en="Candidate structure">Candidate structure</div>
             </div>
             <sl-tag size="small" pill>SMILES</sl-tag>
           </div>
@@ -457,7 +457,7 @@
             </div>
 
             <div class="smiles-source">
-              <div class="smiles-source-label" data-i18n-zh="原始 SMILES 串" data-i18n-en="Raw SMILES String">Raw SMILES String</div>
+              <div class="smiles-source-label" data-i18n-zh="原始 SMILES 串" data-i18n-en="Raw SMILES string">Raw SMILES string</div>
               <div data-smiles="{{ match.smiles }}" data-canvas-id="smiles-canvas-{{ loop.index }}" class="smiles-source-value">
                 {{ match.smiles }}
               </div>
@@ -478,10 +478,10 @@
   <div class="action-row back-actions">
     <sl-button type="button" variant="default" outline class="pill-button" onclick="history.back()">
       <sl-icon slot="prefix" name="arrow-left"></sl-icon>
-      <span data-i18n-zh="返回上一页" data-i18n-en="Go Back">Go Back</span>
+      <span data-i18n-zh="返回上一页" data-i18n-en="Go back">Go back</span>
     </sl-button>
     <sl-button href="{{ url_for('index') }}" variant="primary" class="pill-button">
-      <span data-i18n-zh="返回首页" data-i18n-en="Return to Home">Return to Home</span>
+      <span data-i18n-zh="返回首页" data-i18n-en="Return to home">Return to home</span>
     </sl-button>
   </div>
 </div>
