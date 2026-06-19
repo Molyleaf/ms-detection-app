@@ -71,12 +71,12 @@ class ModeDb(TypedDict):
 
 
 def build_all_assets(
-        risk_xlsx: str = "risk_matching-0112.xlsx",
+        risk_xlsx: str = "risk_matching-0619.xlsx",
         ku_txt: str = "ku-0619.txt",
 ) -> None:
     """
     ✅ 一个入口完成全部转换：
-      1) 风险库 joblib (默认使用含有风险0/1/2/3工作表的 risk_matching-0112.xlsx，而非单工作表训练集化合物-7-1.xlsx)
+      1) 风险库 joblib (默认使用含有风险0/1/2/3工作表的 risk_matching-0619.xlsx，而非单工作表训练集化合物-7-1.xlsx)
       2) 谱库 joblib
       3) 统计量 joblib
     """
