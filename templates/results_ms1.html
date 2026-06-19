@@ -101,6 +101,7 @@
     inset: 0;
     opacity: 0;
     cursor: pointer;
+    z-index: 10; /* Ensure hidden input stays on top of the sl-button component to catch click events */
   }
 
   .upload-trigger::part(base),
