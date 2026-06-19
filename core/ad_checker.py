@@ -1,5 +1,6 @@
 # core/ad_checker.py
 import numpy as np
+import typing
 import pandas as pd
 import pickle
 import os
@@ -39,7 +40,11 @@ class ADDataPreprocessor:
         self.max_intensity_mz_std = None
         
         self.graph_data = []
-        self.labels = []
+        # 初始化样本标签和训练/验证/测试集索引，使用 typing.Any 绕过 sklearn 返回类型不确定的 assignment issue
+        self.labels: np.ndarray = np.array([], dtype=int)
+        self.train_indices: typing.Any = None
+        self.val_indices: typing.Any = None
+        self.test_indices: typing.Any = None
     
     def load_and_preprocess_data(self, file_path):
         """加载并预处理数据"""
@@ -112,7 +117,8 @@ class ADDataPreprocessor:
         print(f"最大强度 m/z 均值: {self.max_intensity_mz_mean:.2f}, 标准差: {self.max_intensity_mz_std:.2f}")
         
         print("构建图表示...")
-        for i, row in df.iterrows():
+        # 使用 enumerate 以确保索引 i 具有明确的 int 类型
+        for i, (_, row) in enumerate(df.iterrows()):
             if i % 1000 == 0 and i > 0:
                 print(f"  已处理 {i}/{len(df)} 个样本")
             

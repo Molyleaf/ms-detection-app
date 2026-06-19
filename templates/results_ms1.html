@@ -379,8 +379,10 @@
               <sl-badge variant="warning" pill data-risk-label="Risk2">Risk 2 (High)</sl-badge>
               {% elif peak.Output_Risk == 'Risk3' %}
               <sl-badge variant="success" pill data-risk-label="Risk3">Risk 3 (Safe)</sl-badge>
-              {% else %}
+              {% elif peak.Output_Risk == 'Safe' %}
               <sl-badge variant="success" pill data-risk-label="Safe">Safe</sl-badge>
+              {% else %}
+              <sl-badge variant="success" pill data-risk-label="Safe">{{ peak.Output_Risk }}</sl-badge>
               {% endif %}
             </td>
 

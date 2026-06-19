@@ -26,7 +26,13 @@ from core.ad_checker import load_or_train_ad_checker
 if os.path.exists("/app"):
     os.chdir("/app")
 
-URL_PREFIX = os.environ.get("URL_PREFIX")
+# 获取并规范化 URL_PREFIX，以斜杠开头且末尾不带斜杠。通过中间变量赋值以避免基于常量的重定义警告。
+_prefix = os.environ.get("URL_PREFIX", "").strip()
+if _prefix:
+    if not _prefix.startswith("/"):
+        _prefix = "/" + _prefix
+    _prefix = _prefix.rstrip("/")
+URL_PREFIX = _prefix
 
 app = Flask(__name__, static_url_path=f"{URL_PREFIX}/static")
 
@@ -84,15 +90,20 @@ def _risk_label_for_ui(output_risk: str) -> tuple[str, str]:
     return mapping.get(str(output_risk), ("未见异常", "success"))
 
 
-@app.route("/")
-def root():
-    # 兼容旧的根路径访问：跳转到新前缀
-    return redirect(url_for("index"))
+if URL_PREFIX:
+    @app.route("/")
+    def root():
+        # 兼容旧的根路径访问：跳转到新前缀
+        return redirect(url_for("index"))
 
-@app.route(f"{URL_PREFIX}", strict_slashes=False)
-@app.route(f"{URL_PREFIX}/", strict_slashes=False)
-def index():
-    return render_template("index.html")
+    @app.route(f"{URL_PREFIX}", strict_slashes=False)
+    @app.route(f"{URL_PREFIX}/", strict_slashes=False)
+    def index():
+        return render_template("index.html")
+else:
+    @app.route("/", strict_slashes=False)
+    def index():
+        return render_template("index.html")
 @app.route(f"{URL_PREFIX}/upload_ms1", methods=["POST"])
 def upload_ms1():
     """
