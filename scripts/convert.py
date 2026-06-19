@@ -59,8 +59,8 @@ def _parse_ku_line(line: str):
 
 
 def build_all_assets(
-        risk_xlsx: str = "risk_matching-0112.xlsx",
-        ku_txt: str = "ku-0115.txt",
+        risk_xlsx: str = "化合物-7-1.xlsx",
+        ku_txt: str = "ku-0619.txt",
 ) -> None:
     """
     ✅ 一个入口完成全部转换：

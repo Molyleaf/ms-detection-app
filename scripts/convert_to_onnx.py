@@ -1,6 +1,6 @@
-import tensorflow as tf
-import tf2onnx
-import onnx
+import tensorflow as tf # ty:ignore[unresolved-import]  # pyright: ignore[reportMissingImports, reportMissingModuleSource]
+import tf2onnx  # ty:ignore[unresolved-import]  # pyright: ignore[reportMissingImports]
+import onnx # ty:ignore[unresolved-import]  # pyright: ignore[reportMissingImports]
 import os
 
 # 1. 统一使用 tensorflow.keras 路径，保持与训练代码一致
