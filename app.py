@@ -22,10 +22,9 @@ from core.onnx_infer import ONNXClassifier
 from core.similarity import topk_library_matches
 from core.ad_checker import load_or_train_ad_checker
 
-# 从环境变量 URL_PREFIX 获取工作目录进行统一设置
-_work_dir = os.environ.get("URL_PREFIX")
-if _work_dir:
-    os.chdir(_work_dir)
+# 工作目录固定为 /app（仅在 /app 目录存在时切换，例如 Docker 容器环境，避免影响本地开发）
+if os.path.exists("/app"):
+    os.chdir("/app")
 
 URL_PREFIX = os.environ.get("URL_PREFIX")
 

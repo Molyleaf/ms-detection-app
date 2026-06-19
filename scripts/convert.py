@@ -81,8 +81,8 @@ def build_all_assets(
       3) 统计量 joblib
     """
 
-    # 从环境变量 URL_PREFIX 获取工作目录，若未设置则自动定位到项目根目录
-    work_dir = os.environ.get("URL_PREFIX") or os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    # 工作目录固定为 /app（若存在，例如 Docker 容器环境），否则自动定位到当前项目根目录
+    work_dir = "/app" if os.path.exists("/app") else os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
     paths = Paths(
         base_dir=os.path.join(work_dir, "data"),
