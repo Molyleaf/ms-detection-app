@@ -1,5 +1,20 @@
 # core/features.py
+import os
+import pickle
 import numpy as np
+
+
+# 加载全局统计量，用于保持特征归一化与训练时完全一致
+STATS_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data_processed', 'ad_checker_model.pkl')
+try:
+    with open(STATS_PATH, 'rb') as f:
+        _model_data = pickle.load(f)
+        GLOBAL_MZ_MEAN = _model_data.get('mz_mean', 0.0)
+        GLOBAL_MZ_STD = _model_data.get('mz_std', 1.0)
+        GLOBAL_MAX_MZ_MEAN = _model_data.get('max_intensity_mz_mean', 0.0)
+        GLOBAL_MAX_MZ_STD = _model_data.get('max_intensity_mz_std', 1.0)
+except Exception as e:
+    print(f"Warning: Failed to load global stats from {STATS_PATH}: {e}")
 
 
 NONAFI_CHARACTERISTIC_PEAKS = [
@@ -48,7 +63,6 @@ def parse_peaks(peaks: str):
 
 def build_graph_inputs(
         peaks: str,
-        stats: dict[str, float],
         max_nodes: int = 10,
         node_dim: int = 10,
 ):
@@ -62,18 +76,17 @@ def build_graph_inputs(
     peak_data.sort(key=lambda x: x[1], reverse=True)
     peak_data = peak_data[:max_nodes]
 
-    # @ai-intent Extract GNN features and adjacency matrix to match qlc-0103 training.
-    # @ai-invariant total_peaks MUST be max(len(peak_data), 1) before padding replication.
-    # @ai-invariant is_last node index MUST be len(peak_data) - 1.
-
-    mz_values = [p[0] for p in peak_data]
+    # [撤销修复] 不再扩充 peak_data，保留原始真实峰数量，复刻 SimplifiedAttentionClassifier
+    mz_values = []
+    for j, (mz, intensity) in enumerate(peak_data):
+        mz_values.append(mz)
+        
     max_intensity_mz = mz_values[0] if mz_values else 0.0
 
-
-    mz_mean = float(stats.get("mz_mean", 0.0))
-    mz_std = float(stats.get("mz_std", 1.0)) or 1.0
-    mx_mean = float(stats.get("max_intensity_mz_mean", 0.0))
-    mx_std = float(stats.get("max_intensity_mz_std", 1.0)) or 1.0
+    mz_mean = float(GLOBAL_MZ_MEAN)
+    mz_std = float(GLOBAL_MZ_STD)
+    mx_mean = float(GLOBAL_MAX_MZ_MEAN)
+    mx_std = float(GLOBAL_MAX_MZ_STD)
 
     rounded_characteristic = {round(p, 1) for p in NONAFI_CHARACTERISTIC_PEAKS}
     rounded_key = {round(p, 1) for p in KEY_PEAKS}
@@ -99,7 +112,7 @@ def build_graph_inputs(
     for j in range(max_nodes):
         if j < len(peak_data):
             mz = float(peak_data[j][0])
-        elif peak_data:
+        elif len(peak_data) > 0:
             mz = float(peak_data[-1][0])
         else:
             mz = 0.0
@@ -108,7 +121,7 @@ def build_graph_inputs(
         mz_norm = (mz - mz_mean) / mz_std
         pos_ratio = j / total_peaks
         is_first = 1.0 if j == 0 else 0.0
-        is_last = 1.0 if j == len(peak_data) - 1 else 0.0
+        is_last = 1.0 if j == total_peaks - 1 else 0.0
 
         rmz = round(mz, 1)
         is_char = 1.0 if rmz in rounded_characteristic else 0.0

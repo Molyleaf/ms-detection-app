@@ -40,7 +40,6 @@ app = Flask(__name__, static_url_path=f"{URL_PREFIX}/static")
 ASSETS = {
     "risk_db": "data_processed/risk_db.joblib",
     "spectrum_db": "data_processed/spectrum_db.joblib",
-    "stats": "data_processed/stats.joblib",
     "onnx": "models/model.onnx",
     "ad_checker": "data_processed/ad_checker_model.pkl",
     "ad_train_data": "data/化合物-7-1.xlsx",
@@ -50,7 +49,7 @@ ASSETS = {
 @lru_cache(maxsize=1)
 def get_classifier() -> ONNXClassifier:
     # 懒加载，避免 worker 启动阶段 onnxruntime 初始化卡死导致 gunicorn timeout
-    return ONNXClassifier(model_path=ASSETS["onnx"], stats_joblib=ASSETS["stats"])
+    return ONNXClassifier(model_path=ASSETS["onnx"])
 
 
 @dataclass(frozen=True)
