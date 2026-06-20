@@ -222,7 +222,7 @@ def analyze_ms2():
                 prob=None,
                 risk_text=None,
                 risk_class=None,
-                matches=None,
+                matches=[],
                 prob_symbol=None,
                 ad_result=ad_result,
             )
@@ -278,7 +278,7 @@ def analyze_ms2():
 
         # 5) 谱库回溯（L3）：仅在预测为阳性时进行
         #    需求：预测为阴性时，不进行 L3 匹配（避免无意义的谱库扫描与耗时）
-        matches = None
+        matches = []
         if label == "Positive":
             # 结构匹配：无论最高相似度多少，都至少展示 5 个候选
             top = topk_library_matches(

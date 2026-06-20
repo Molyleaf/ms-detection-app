@@ -280,7 +280,7 @@
             </sl-tag>
             <sl-tag size="small" pill>
               <span data-i18n-zh="库匹配数" data-i18n-en="Library matches">Library matches</span>
-              <span> {{ matches|length }}</span>
+              <span> {{ matches|length if matches else 0 }}</span>
             </sl-tag>
           </div>
 
