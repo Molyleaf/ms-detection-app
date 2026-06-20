@@ -111,6 +111,20 @@ def process_l1_excel(
         raise FileNotFoundError(f"找不到输入文件: {input_xlsx}")
 
     raw = pd.read_excel(input_xlsx, sheet_name=0, engine="openpyxl")
+    
+    # 自动探测无表头的情况：如果前两列的列名可以直接转换为数值，说明首行其实是数据行而不是表头
+    is_headerless = False
+    if len(raw.columns) >= 2:
+        try:
+            float(str(raw.columns[0]).strip())
+            float(str(raw.columns[1]).strip())
+            is_headerless = True
+        except ValueError:
+            pass
+            
+    if is_headerless:
+        raw = pd.read_excel(input_xlsx, sheet_name=0, header=None, engine="openpyxl")
+
     mcol, icol = _find_mass_intensity_cols(raw)
 
     df = raw.rename(columns={mcol: "Mass", icol: "Intensity"})[["Mass", "Intensity"]].copy()

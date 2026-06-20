@@ -160,11 +160,17 @@ def characteristic_rule_trigger(peaks: str) -> bool:
     two = 0
     three = 0
     for mz in mzs:
+        matched_two = False
+        matched_three = False
         for cp in NONAFI_CHARACTERISTIC_PEAKS:
-            if round(mz, 2) == round(cp, 2):
-                two += 1
-                break
             if round(mz, 3) == round(cp, 3):
-                three += 1
-                break
+                matched_three = True
+            if round(mz, 2) == round(cp, 2):
+                matched_two = True
+        
+        if matched_three:
+            three += 1
+        if matched_two:
+            two += 1
+
     return (two >= 3) or (three >= 2)
