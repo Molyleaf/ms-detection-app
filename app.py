@@ -186,10 +186,14 @@ def upload_ms1():
 @app.route(f"{URL_PREFIX}/analyze_ms2", methods=["POST"])
 def analyze_ms2():
     """
-    @ai-intent Perform MS2 classification and library match retrieval.
-    @ai-invariant Result page MUST reflect actual ONNX classifier output.
-    @ai-boundary Flask request environment access. Temp upload file persistence.
-    @ai-context Domain: app.py routing. Flow: Upload MS2 -> AD Check -> Predict MS2 via ONNX -> Library Match.
+    # @ai-intent Perform MS2 classification and library match retrieval.
+    # @ai-invariant Result page MUST reflect actual ONNX classifier output.
+    # @ai-invariant GNN-based confidence output MUST match qlc-0103 definition without external scaling formulas.
+    # @ai-boundary Flask request environment access. Temp upload file persistence.
+    # @ai-context
+    #   ContextData:
+    #     Domain: app.py routing
+    #     Flow: Upload MS2 -> AD Check -> Predict MS2 via ONNX -> Library Match
 
     MS2 分析入口：上传 MS2 文件（L2） -> 生成 peaks -> ONNX 推理 -> 阳性则谱库回溯
 

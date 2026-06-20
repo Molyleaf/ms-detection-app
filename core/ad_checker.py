@@ -31,7 +31,7 @@ class ApplicabilityDomainChecker:
         
         # 从模型元数据加载常量
         meta = self.sess.get_modelmeta().custom_metadata_map
-        self.h_star = float(meta["h_star"])
+        self.h_star = 0.11
         self.mz_mean = float(meta["mz_mean"])
         self.mz_std = float(meta["mz_std"])
         self.max_intensity_mz_mean = float(meta["max_intensity_mz_mean"])

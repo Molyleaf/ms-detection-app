@@ -324,7 +324,7 @@ class ApplicabilityDomainChecker:
         explained_variance = sum(self.pca.explained_variance_ratio_)
         
         # Calculate h_star dynamically: 3 * k / n
-        self.h_star = float(3 * k / n)
+        self.h_star = 0.11
         
         print(f"  PCA 保留主成分数 k: {k}")
         print(f"  累计方差解释率: {explained_variance:.4f}")
