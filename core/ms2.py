@@ -29,13 +29,16 @@ def _find_mass_intensity_cols(df: pd.DataFrame):
 
 
 def normalize_intensity_0_100(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    将强度归一化到 0~100 范围（以最大强度为 100%）。
+    避免使用 min-max 归一化导致最小峰强度被强行归零并被丢弃的问题。
+    """
     x = df["Intensity"].to_numpy(dtype=np.float64)
-    mn = float(np.min(x))
     mx = float(np.max(x))
-    if mx == mn:
+    if mx == 0:
         df["Intensity"] = 0.0
         return df
-    df["Intensity"] = 100.0 * (x - mn) / (mx - mn)
+    df["Intensity"] = 100.0 * x / mx
     return df
 
 
