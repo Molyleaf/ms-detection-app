@@ -93,16 +93,33 @@ def to_peaks_string(df: pd.DataFrame, intensity_digits: int) -> str:
     return ",".join([fmt.format(float(m), float(i)) for m, i in zip(mz, it, strict=False)])
 
 
+# @ai-intent Process MS2 Excel file and output list of peak strings.
+# @ai-boundary Read-only input Excel. Return list of peak strings.
 def process_l2_excel_to_peaks(
         input_xlsx: str,
         output_xlsx: str | None = None,
         cfg: MS2Config = MS2Config(),
-) -> str:
+) -> list[str]:
     if not os.path.exists(input_xlsx):
         raise FileNotFoundError(f"找不到 L2 输入: {input_xlsx}")
 
     raw = pd.read_excel(input_xlsx, sheet_name=0, engine="openpyxl")
     
+    # 检测是否包含 peaks 列，若包含则视为包含多个独立谱图的外部验证文件格式
+    peaks_col = None
+    for col in raw.columns:
+        if str(col).strip().lower() == 'peaks':
+            peaks_col = col
+            break
+            
+    if peaks_col is not None:
+        peaks_list = []
+        for val in raw[peaks_col]:
+            val_str = str(val).strip()
+            if pd.notna(val) and val_str != '' and val_str.lower() != 'nan':
+                peaks_list.append(val_str)
+        return peaks_list
+
     # 自动探测无表头的情况：如果前两列的列名可以直接转换为数值，说明首行其实是数据行而不是表头
     is_headerless = False
     if len(raw.columns) >= 2:
@@ -135,4 +152,4 @@ def process_l2_excel_to_peaks(
         out = pd.DataFrame({"peaks": [peaks]})
         out.to_excel(output_xlsx, sheet_name="Formatted Output", index=False)
 
-    return peaks
+    return [peaks]

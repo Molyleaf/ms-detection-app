@@ -235,21 +235,60 @@ def analyze_ms2():
                 ad_result=ad_result,
             )
 
-        # 2) MS2 预处理：输出 peaks 字符串（mass:intensity,...）
-        peaks = process_l2_excel_to_peaks(
+        # 2) MS2 预处理：输出 peaks 字符串列表
+        peaks_list = process_l2_excel_to_peaks(
             input_xlsx=ms2_in,
             output_xlsx=None,
             cfg=MS2Config(mass_tolerance=2.0, intensity_digits=2),
         )
-        if not peaks:
+        if not peaks_list:
             return "二级质谱 peaks 为空，无法判定", 400
 
         # 3) ONNX 推理（懒加载）
-        #    无论 MS1 实际 Risk 为何，均基于二级质谱的 ONNX 模型推理值来计算实际概率
+        #    支持多谱图 Batch 推理：对多个谱图概率进行平均稀释，只要有一个大于 0.5 即判为 Positive
         classifier = get_classifier()
-        pred = classifier.predict_from_peaks(peaks)
-        label = pred["label"]
-        prob = float(pred["probability"])
+        
+        y_pred_prob = []
+        positive_count = 0
+        best_positive_prob = -1.0
+        best_positive_peaks = None
+        
+        for peaks_str in peaks_list:
+            pred = classifier.predict_from_peaks(peaks_str)
+            prob = float(pred["probability"])
+            
+            # 统一提取对应“那非阳性”的原始预测概率 P_GNN
+            if pred["via"] == "rule":
+                p_gnn = 1.0
+            else:
+                if pred["label"] == "Positive":
+                    p_gnn = prob
+                else:
+                    p_gnn = 1.0 - prob
+            
+            is_pos = p_gnn > 0.5 or pred["via"] == "rule"
+            if is_pos:
+                positive_count += 1
+                if p_gnn > best_positive_prob:
+                    best_positive_prob = p_gnn
+                    best_positive_peaks = peaks_str
+            
+            y_pred_prob.append(p_gnn)
+            
+        if len(y_pred_prob) == 0:
+            return "二级质谱 peaks 为空，无法判定", 400
+            
+        avg_prob = float(np.mean(y_pred_prob))
+        
+        # 只要这批谱图中有任意一个触发阳性，即整体判定为 Positive
+        if positive_count > 0:
+            label = "Positive"
+            prob = avg_prob
+            query_peaks = best_positive_peaks if best_positive_peaks is not None else peaks_list[0]
+        else:
+            label = "Negative"
+            prob = 1.0 - avg_prob
+            query_peaks = peaks_list[0]
 
         # 增加 Confidence Assessment Criteria 符号
         if prob <= 0.1:
@@ -282,7 +321,7 @@ def analyze_ms2():
         if label == "Positive":
             # 结构匹配：无论最高相似度多少，都至少展示 5 个候选
             top = topk_library_matches(
-                peaks=peaks,
+                peaks=query_peaks,
                 spectrum_db_joblib=ASSETS["spectrum_db"],
                 tol=0.2,
                 top_k=10,
