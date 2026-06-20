@@ -125,8 +125,8 @@ def process_l2_excel_to_peaks(
 
     df = normalize_intensity_0_100(df)
     df = df[df["Intensity"] > 0].copy()
-    # 二级质谱不应进行同位素合并，这会破坏碎片离子的相对分布特征，导致 GNN 输入极度饱和
-    # df = remove_isotope_peaks_keep_strongest(df, cfg.mass_tolerance)
+    # 恢复二级质谱的同位素合并，以保持与 qlc-0103.ipynb 原始定义 100% 一致，防特征分布偏移
+    df = remove_isotope_peaks_keep_strongest(df, cfg.mass_tolerance)
 
     peaks = to_peaks_string(df, cfg.intensity_digits)
 

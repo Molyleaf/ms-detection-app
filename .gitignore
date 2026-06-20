@@ -80,3 +80,5 @@ models/*.h5
 .env.local
 
 data_processed
+
+scratch
