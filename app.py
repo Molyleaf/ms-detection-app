@@ -248,13 +248,46 @@ def analyze_ms2():
         #    支持多谱图 Batch 推理：对多个谱图概率进行平均稀释，只要有一个大于 0.5 即判为 Positive
         classifier = get_classifier()
         
+        # 计算当前批次（或单谱图）的动态归一化参数
+        from core.features import parse_peaks
+        all_mz = []
+        all_max_intensity_mz = []
+        for peaks_str in peaks_list:
+            peak_data = parse_peaks(peaks_str)
+            peak_data.sort(key=lambda x: x[1], reverse=True)
+            top_peaks = peak_data[:10]
+            for mz, intensity in top_peaks:
+                all_mz.append(mz)
+            if top_peaks:
+                all_max_intensity_mz.append(top_peaks[0][0])
+        
+        if all_mz:
+            mz_mean = float(np.mean(all_mz))
+            mz_std = float(np.std(all_mz)) if np.std(all_mz) > 0 else 1.0
+        else:
+            mz_mean = 0.0
+            mz_std = 1.0
+            
+        if all_max_intensity_mz:
+            max_intensity_mz_mean = float(np.mean(all_max_intensity_mz))
+            max_intensity_mz_std = float(np.std(all_max_intensity_mz)) if np.std(all_max_intensity_mz) > 0 else 1.0
+        else:
+            max_intensity_mz_mean = 0.0
+            max_intensity_mz_std = 1.0
+
         y_pred_prob = []
         positive_count = 0
         best_positive_prob = -1.0
         best_positive_peaks = None
         
         for peaks_str in peaks_list:
-            pred = classifier.predict_from_peaks(peaks_str)
+            pred = classifier.predict_from_peaks(
+                peaks_str,
+                mz_mean=mz_mean,
+                mz_std=mz_std,
+                max_intensity_mz_mean=max_intensity_mz_mean,
+                max_intensity_mz_std=max_intensity_mz_std
+            )
             prob = float(pred["probability"])
             
             # 统一提取对应“那非阳性”的原始预测概率 P_GNN
@@ -281,7 +314,7 @@ def analyze_ms2():
             query_peaks = best_positive_peaks if best_positive_peaks is not None else peaks_list[0]
         else:
             label = "Negative"
-            prob = 1.0 - avg_prob
+            prob = avg_prob
             query_peaks = peaks_list[0]
 
         # 增加 Confidence Assessment Criteria 符号

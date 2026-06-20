@@ -74,6 +74,10 @@ def build_graph_inputs(
         peaks: str,
         max_nodes: int = 10,
         node_dim: int = 10,
+        mz_mean: float | None = None,
+        mz_std: float | None = None,
+        max_intensity_mz_mean: float | None = None,
+        max_intensity_mz_std: float | None = None,
 ):
     """
     输出：
@@ -92,10 +96,22 @@ def build_graph_inputs(
         
     max_intensity_mz = mz_values[0] if mz_values else 0.0
 
-    mz_mean = float(GLOBAL_MZ_MEAN)
-    mz_std = float(GLOBAL_MZ_STD)
-    mx_mean = float(GLOBAL_MAX_MZ_MEAN)
-    mx_std = float(GLOBAL_MAX_MZ_STD)
+    # 动态归一化逻辑
+    if mz_mean is None or mz_std is None or max_intensity_mz_mean is None or max_intensity_mz_std is None:
+        # 单谱图动态计算
+        all_mz = [mz for mz, _ in peak_data]
+        mz_mean = float(np.mean(all_mz)) if all_mz else 0.0
+        mz_std = float(np.std(all_mz)) if all_mz and np.std(all_mz) > 0 else 1.0
+        max_intensity_mz_mean = max_intensity_mz
+        max_intensity_mz_std = 1.0
+    else:
+        mz_mean = float(mz_mean)
+        mz_std = float(mz_std)
+        max_intensity_mz_mean = float(max_intensity_mz_mean)
+        max_intensity_mz_std = float(max_intensity_mz_std)
+
+    mx_mean = max_intensity_mz_mean
+    mx_std = max_intensity_mz_std
 
     rounded_characteristic = {round(p, 1) for p in NONAFI_CHARACTERISTIC_PEAKS}
     rounded_key = {round(p, 1) for p in KEY_PEAKS}

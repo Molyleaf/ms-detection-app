@@ -42,8 +42,23 @@ class ONNXClassifier:
     #     Domain: core/onnx_infer.py
     #     Trigger: predict_from_peaks
     #     Return: Label (Positive/Negative), Probability (P_GNN)
-    def predict_from_peaks(self, peaks: str):
-        nodes, adj = build_graph_inputs(peaks, max_nodes=10, node_dim=10)
+    def predict_from_peaks(
+            self,
+            peaks: str,
+            mz_mean: float | None = None,
+            mz_std: float | None = None,
+            max_intensity_mz_mean: float | None = None,
+            max_intensity_mz_std: float | None = None,
+    ):
+        nodes, adj = build_graph_inputs(
+            peaks,
+            max_nodes=10,
+            node_dim=10,
+            mz_mean=mz_mean,
+            mz_std=mz_std,
+            max_intensity_mz_mean=max_intensity_mz_mean,
+            max_intensity_mz_std=max_intensity_mz_std,
+        )
         feed = {
             self.input_names[0]: nodes.astype(np.float32),
             self.input_names[1]: adj.astype(np.float32),
