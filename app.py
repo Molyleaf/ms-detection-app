@@ -261,10 +261,7 @@ def analyze_ms2():
             if pred["via"] == "rule":
                 p_gnn = 1.0
             else:
-                if pred["label"] == "Positive":
-                    p_gnn = prob
-                else:
-                    p_gnn = 1.0 - prob
+                p_gnn = prob
             
             is_pos = p_gnn > 0.5 or pred["via"] == "rule"
             if is_pos:

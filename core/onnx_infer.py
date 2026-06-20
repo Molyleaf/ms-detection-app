@@ -34,7 +34,7 @@ class ONNXClassifier:
         self.output_names = [o.name for o in self.sess.get_outputs()]
 
     # @ai-intent Predict MS2 sample class and probability using ONNX model.
-    # @ai-invariant Output probability MUST match qlc-0103 definition: P_GNN for Positive, 1.0 - P_GNN for Negative.
+    # @ai-invariant Output probability MUST match raw sigmoid output P_GNN.
     # @ai-invariant Output probability MUST be within [0.0, 1.0].
     # @ai-invariant If characteristic_rule_trigger is True, return Positive and 1.0 probability.
     # @ai-boundary Read-only peaks string. No local file write.
@@ -42,7 +42,7 @@ class ONNXClassifier:
     #   ContextData:
     #     Domain: core/onnx_infer.py
     #     Trigger: predict_from_peaks
-    #     Return: Label (Positive/Negative), Probability (P_GNN or 1.0 - P_GNN)
+    #     Return: Label (Positive/Negative), Probability (P_GNN)
     def predict_from_peaks(self, peaks: str):
         if characteristic_rule_trigger(peaks):
             return {"label": "Positive", "probability": 1.0, "via": "rule"}
@@ -55,7 +55,7 @@ class ONNXClassifier:
         out = self.sess.run(self.output_names, feed)
         prob = float(np.asarray(out[0]).reshape(-1)[0])
 
-        # 单样本：prob>0.5 => Positive，否则 Negative 且概率=1-prob
+        # 单样本：prob>0.5 => Positive，否则 Negative 且直接返回原始概率 prob
         if prob > 0.5:
             return {"label": "Positive", "probability": prob, "via": "onnx"}
-        return {"label": "Negative", "probability": 1.0 - prob, "via": "onnx"}
+        return {"label": "Negative", "probability": prob, "via": "onnx"}
