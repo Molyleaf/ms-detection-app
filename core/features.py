@@ -4,17 +4,26 @@ import pickle
 import numpy as np
 
 
-# 加载全局统计量，用于保持特征归一化与训练时完全一致
+# 预置全局特征归一化兜底参数，防止生产环境缺失 ad_checker_model.pkl (或 sklearn 库) 导致加载失败
+GLOBAL_MZ_MEAN = 198.83258730722042
+GLOBAL_MZ_STD = 137.4598501352561
+GLOBAL_MAX_MZ_MEAN = 225.7786931440162
+GLOBAL_MAX_MZ_STD = 153.0965363010071
+
 STATS_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data_processed', 'ad_checker_model.pkl')
-try:
-    with open(STATS_PATH, 'rb') as f:
-        _model_data = pickle.load(f)
-        GLOBAL_MZ_MEAN = _model_data.get('mz_mean', 0.0)
-        GLOBAL_MZ_STD = _model_data.get('mz_std', 1.0)
-        GLOBAL_MAX_MZ_MEAN = _model_data.get('max_intensity_mz_mean', 0.0)
-        GLOBAL_MAX_MZ_STD = _model_data.get('max_intensity_mz_std', 1.0)
-except Exception as e:
-    print(f"Warning: Failed to load global stats from {STATS_PATH}: {e}")
+if os.path.exists(STATS_PATH):
+    try:
+        with open(STATS_PATH, 'rb') as f:
+            _model_data = pickle.load(f)
+            GLOBAL_MZ_MEAN = _model_data.get('mz_mean', GLOBAL_MZ_MEAN)
+            GLOBAL_MZ_STD = _model_data.get('mz_std', GLOBAL_MZ_STD)
+            GLOBAL_MAX_MZ_MEAN = _model_data.get('max_intensity_mz_mean', GLOBAL_MAX_MZ_MEAN)
+            GLOBAL_MAX_MZ_STD = _model_data.get('max_intensity_mz_std', GLOBAL_MAX_MZ_STD)
+    except Exception as e:
+        print(f"Warning: Failed to load global stats from {STATS_PATH}: {e}. Using hardcoded fallbacks.")
+else:
+    # 生产环境中不包含 ad_checker_model.pkl 文件，打印普通提示并静默使用硬编码兜底
+    pass
 
 
 NONAFI_CHARACTERISTIC_PEAKS = [

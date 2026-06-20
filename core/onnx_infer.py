@@ -36,7 +36,6 @@ class ONNXClassifier:
     # @ai-intent Predict MS2 sample class and probability using ONNX model.
     # @ai-invariant Output probability MUST match raw sigmoid output P_GNN.
     # @ai-invariant Output probability MUST be within [0.0, 1.0].
-    # @ai-invariant If characteristic_rule_trigger is True, return Positive and 1.0 probability.
     # @ai-boundary Read-only peaks string. No local file write.
     # @ai-context
     #   ContextData:
@@ -44,9 +43,6 @@ class ONNXClassifier:
     #     Trigger: predict_from_peaks
     #     Return: Label (Positive/Negative), Probability (P_GNN)
     def predict_from_peaks(self, peaks: str):
-        if characteristic_rule_trigger(peaks):
-            return {"label": "Positive", "probability": 1.0, "via": "rule"}
-
         nodes, adj = build_graph_inputs(peaks, max_nodes=10, node_dim=10)
         feed = {
             self.input_names[0]: nodes.astype(np.float32),

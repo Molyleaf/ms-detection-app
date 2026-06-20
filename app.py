@@ -258,12 +258,9 @@ def analyze_ms2():
             prob = float(pred["probability"])
             
             # 统一提取对应“那非阳性”的原始预测概率 P_GNN
-            if pred["via"] == "rule":
-                p_gnn = 1.0
-            else:
-                p_gnn = prob
+            p_gnn = prob
             
-            is_pos = p_gnn > 0.5 or pred["via"] == "rule"
+            is_pos = p_gnn > 0.5
             if is_pos:
                 positive_count += 1
                 if p_gnn > best_positive_prob:
