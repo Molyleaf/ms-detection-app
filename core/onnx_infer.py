@@ -39,11 +39,11 @@ class ONNXClassifier:
         self.input_names = [i.name for i in self.sess.get_inputs()]
         self.output_names = [o.name for o in self.sess.get_outputs()]
 
+    # @ai-intent Predict MS2 sample class and probability using ONNX model.
+    # @ai-invariant Output probability MUST be within [0.0, 1.0].
+    # @ai-boundary Read-only peaks string. No local file write.
+    # @ai-context Domain: core/onnx_infer.py. Flow: parse_peaks -> build_graph_inputs -> sess.run -> result.
     def predict_from_peaks(self, peaks: str):
-        # 规则触发：直接阳性
-        if characteristic_rule_trigger(peaks):
-            return {"label": "Positive", "probability": 1.0, "via": "rule"}
-
         nodes, adj = build_graph_inputs(peaks, self.stats, max_nodes=10, node_dim=10)
         feed = {
             self.input_names[0]: nodes.astype(np.float32),

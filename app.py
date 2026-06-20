@@ -186,6 +186,11 @@ def upload_ms1():
 @app.route(f"{URL_PREFIX}/analyze_ms2", methods=["POST"])
 def analyze_ms2():
     """
+    @ai-intent Perform MS2 classification and library match retrieval.
+    @ai-invariant Result page MUST reflect actual ONNX classifier output.
+    @ai-boundary Flask request environment access. Temp upload file persistence.
+    @ai-context Domain: app.py routing. Flow: Upload MS2 -> AD Check -> Predict MS2 via ONNX -> Library Match.
+
     MS2 分析入口：上传 MS2 文件（L2） -> 生成 peaks -> ONNX 推理 -> 阳性则谱库回溯
 
     性能修复：
@@ -237,15 +242,11 @@ def analyze_ms2():
             return "二级质谱 peaks 为空，无法判定", 400
 
         # 3) ONNX 推理（懒加载）
-        #    若 MS1 实际 Risk0：直接判阳(Positive/100%)，但不绕过谱库回溯
-        if str(actual_risk) == "Risk0":
-            label = "Positive"
-            prob = 1.0
-        else:
-            classifier = get_classifier()
-            pred = classifier.predict_from_peaks(peaks)
-            label = pred["label"]
-            prob = float(pred["probability"])
+        #    无论 MS1 实际 Risk 为何，均基于二级质谱的 ONNX 模型推理值来计算实际概率
+        classifier = get_classifier()
+        pred = classifier.predict_from_peaks(peaks)
+        label = pred["label"]
+        prob = float(pred["probability"])
 
         # 增加 Confidence Assessment Criteria 符号
         if prob <= 0.1:
@@ -270,11 +271,7 @@ def analyze_ms2():
             prob_display = round(prob * 100.0, 2) if prob <= 1.0 else 0.0
 
 
-        # 4.1) Risk0：固定为 Confirmed，并强制 100%
-        if str(actual_risk) == "Risk0":
-            risk_text = "有危险 (Confirmed)"
-            risk_class = "danger"
-            prob_display = 100.0
+        # 4.1) Risk0 的强制 Confirmed 逻辑已根据指令移除，以完全体现 ONNX 模型预测结果
 
         # 5) 谱库回溯（L3）：仅在预测为阳性时进行
         #    需求：预测为阴性时，不进行 L3 匹配（避免无意义的谱库扫描与耗时）
