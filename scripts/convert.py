@@ -183,23 +183,45 @@ def build_all_assets(
     joblib.dump(library, spec_out)
 
     # -------------------------
-    # 3) 统计量（用于 MS2 特征）
+    # 3) 统计量（用于 MS2 特征，基于训练集 化合物-7-1.xlsx 计算以确保与模型训练一致）
     # -------------------------
+    train_xlsx_path = os.path.join(paths.data_dir, "化合物-7-1.xlsx")
+    if not os.path.exists(train_xlsx_path):
+        raise FileNotFoundError(f"找不到训练集 Excel 文件: {train_xlsx_path}")
+
+    train_df = pd.read_excel(train_xlsx_path)
     all_mz = []
     max_intensity_mz = []
-    for entry in library:
-        mz = entry["mz"]
-        it = entry["intensities"]
-        if len(mz) == 0:
+
+    for _, row in train_df.iterrows():
+        ms_str = str(row.get("MS", ""))
+        if pd.isna(ms_str) or ms_str == "nan" or ms_str.strip() == "":
             continue
-        all_mz.append(mz.astype(np.float64))
-        if len(it) > 0:
-            max_intensity_mz.append(float(mz[int(np.argmax(it))]))
+        
+        peaks = ms_str.split(",")
+        max_intensity = -1.0
+        max_intensity_mz_val = 0.0
+        
+        for peak in peaks:
+            try:
+                parts = peak.split(":")
+                if len(parts) >= 2:
+                    mz_val = float(parts[0].strip())
+                    intensity_val = float(parts[1].strip())
+                    all_mz.append(mz_val)
+                    if intensity_val > max_intensity:
+                        max_intensity = intensity_val
+                        max_intensity_mz_val = mz_val
+            except (ValueError, TypeError):
+                continue
+        
+        if max_intensity > 0:
+            max_intensity_mz.append(max_intensity_mz_val)
 
     if not all_mz:
-        raise RuntimeError("谱库为空，无法计算 stats.joblib")
+        raise RuntimeError("训练集为空，无法计算 stats.joblib")
 
-    all_mz_concat = np.concatenate(all_mz, axis=0)
+    all_mz_concat = np.array(all_mz, dtype=np.float64)
     mz_mean = float(np.mean(all_mz_concat))
     mz_std = float(np.std(all_mz_concat)) or 1.0
 

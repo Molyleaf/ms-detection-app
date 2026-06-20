@@ -7,7 +7,7 @@ from onnx import helper, TensorProto
 
 def convert_to_onnx(
     pkl_path: str = "data_processed/ad_checker_model.pkl",
-    onnx_path: str = "data_processed/ad_checker.onnx"
+    onnx_path: str = "data_processed/ad_checker_model.onnx"
 ):
     if not os.path.exists(pkl_path):
         raise FileNotFoundError(f"找不到 Pickle 模型文件: {pkl_path}")
