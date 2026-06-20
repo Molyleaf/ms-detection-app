@@ -62,13 +62,13 @@ def build_graph_inputs(
     peak_data.sort(key=lambda x: x[1], reverse=True)
     peak_data = peak_data[:max_nodes]
 
-    if len(peak_data) < max_nodes and len(peak_data) > 0:
-        last_peak = peak_data[-1]
-        while len(peak_data) < max_nodes:
-            peak_data.append(last_peak)
+    # @ai-intent Extract GNN features and adjacency matrix to match qlc-0103 training.
+    # @ai-invariant total_peaks MUST be max(len(peak_data), 1) before padding replication.
+    # @ai-invariant is_last node index MUST be len(peak_data) - 1.
 
     mz_values = [p[0] for p in peak_data]
     max_intensity_mz = mz_values[0] if mz_values else 0.0
+
 
     mz_mean = float(stats.get("mz_mean", 0.0))
     mz_std = float(stats.get("mz_std", 1.0)) or 1.0
