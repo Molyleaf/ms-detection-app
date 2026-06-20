@@ -62,12 +62,6 @@ def build_graph_inputs(
     peak_data.sort(key=lambda x: x[1], reverse=True)
     peak_data = peak_data[:max_nodes]
 
-    # 与训练时完全一致的 padding 逻辑：将 peak_data 填充到 max_nodes 长度
-    if len(peak_data) < max_nodes and len(peak_data) > 0:
-        last_peak = peak_data[-1]
-        while len(peak_data) < max_nodes:
-            peak_data.append(last_peak)
-
     mz_values = [p[0] for p in peak_data]
     max_intensity_mz = mz_values[0] if mz_values else 0.0
 
@@ -96,18 +90,20 @@ def build_graph_inputs(
         return 0.0
 
     nodes = np.zeros((max_nodes, node_dim), dtype=np.float32)
-    total_peaks = max(len(peak_data), 1)
 
     for j in range(max_nodes):
         if j < len(peak_data):
             mz = float(peak_data[j][0])
+        elif peak_data:
+            mz = float(peak_data[-1][0])
         else:
             mz = 0.0
 
+        total_peaks = max(len(peak_data), 1)
         mz_norm = (mz - mz_mean) / mz_std
         pos_ratio = j / total_peaks
         is_first = 1.0 if j == 0 else 0.0
-        is_last = 1.0 if j == total_peaks - 1 else 0.0
+        is_last = 1.0 if j == len(peak_data) - 1 else 0.0
 
         rmz = round(mz, 1)
         is_char = 1.0 if rmz in rounded_characteristic else 0.0
@@ -138,7 +134,7 @@ def build_graph_inputs(
         ]
         nodes[j, :node_dim] = np.asarray(feats[:node_dim], dtype=np.float32)
 
-    # 邻接矩阵：使用完全 padding 后的 mz_values 构建
+    # 邻接矩阵：exp(-diff^2/(2*sigma^2))
     adj = np.eye(max_nodes, dtype=np.float32)
     sigma = 50.0
     for i in range(min(len(mz_values), max_nodes)):
