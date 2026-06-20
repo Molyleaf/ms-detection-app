@@ -62,6 +62,11 @@ def build_graph_inputs(
     peak_data.sort(key=lambda x: x[1], reverse=True)
     peak_data = peak_data[:max_nodes]
 
+    if len(peak_data) < max_nodes and len(peak_data) > 0:
+        last_peak = peak_data[-1]
+        while len(peak_data) < max_nodes:
+            peak_data.append(last_peak)
+
     mz_values = [p[0] for p in peak_data]
     max_intensity_mz = mz_values[0] if mz_values else 0.0
 
