@@ -323,6 +323,9 @@ class ApplicabilityDomainChecker:
         
         explained_variance = sum(self.pca.explained_variance_ratio_)
         
+        # Calculate h_star dynamically: 3 * k / n
+        self.h_star = float(3 * k / n)
+        
         print(f"  PCA 保留主成分数 k: {k}")
         print(f"  累计方差解释率: {explained_variance:.4f}")
         print(f"  Leverage 阈值 h*: {self.h_star:.6f}")
@@ -355,7 +358,7 @@ def main():
     preprocessor.load_and_preprocess_data(TRAIN_DATA_FILE)
     preprocessor.split_data(test_size=0.2, val_size=0.2)
     
-    checker = ApplicabilityDomainChecker(h_star=0.11)
+    checker = ApplicabilityDomainChecker()
     checker.fit_from_preprocessor(preprocessor)
     checker.save_model('data_processed/ad_checker_model.pkl')
 
