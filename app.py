@@ -245,35 +245,14 @@ def analyze_ms2():
             return "二级质谱 peaks 为空，无法判定", 400
 
         # 3) ONNX 推理（懒加载）
-        #    支持多谱图 Batch 推理：对多个谱图概率进行平均稀释，只要有一个大于 0.5 即判为 Positive
+        #    使用从训练集 化合物0117.xlsx 计算所得的静态归一化指标进行特征提取
         classifier = get_classifier()
         
-        # 计算当前批次（或单谱图）的动态归一化参数
-        from core.features import parse_peaks
-        all_mz = []
-        all_max_intensity_mz = []
-        for peaks_str in peaks_list:
-            peak_data = parse_peaks(peaks_str)
-            peak_data.sort(key=lambda x: x[1], reverse=True)
-            top_peaks = peak_data[:10]
-            for mz, intensity in top_peaks:
-                all_mz.append(mz)
-            if top_peaks:
-                all_max_intensity_mz.append(top_peaks[0][0])
-        
-        if all_mz:
-            mz_mean = float(np.mean(all_mz))
-            mz_std = float(np.std(all_mz)) if np.std(all_mz) > 0 else 1.0
-        else:
-            mz_mean = 0.0
-            mz_std = 1.0
-            
-        if all_max_intensity_mz:
-            max_intensity_mz_mean = float(np.mean(all_max_intensity_mz))
-            max_intensity_mz_std = float(np.std(all_max_intensity_mz)) if np.std(all_max_intensity_mz) > 0 else 1.0
-        else:
-            max_intensity_mz_mean = 0.0
-            max_intensity_mz_std = 1.0
+        # 训练集统计量 (基于强度排序 top_peaks[:10] 计算所得)
+        mz_mean = 140.890099
+        mz_std = 88.227046
+        max_intensity_mz_mean = 157.962141
+        max_intensity_mz_std = 98.416887
 
         y_pred_prob = []
         positive_count = 0

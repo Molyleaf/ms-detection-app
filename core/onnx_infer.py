@@ -66,6 +66,21 @@ class ONNXClassifier:
         out = self.sess.run(self.output_names, feed)
         prob = float(np.asarray(out[0]).reshape(-1)[0])
 
+        # 引入温度缩放 (Temperature Scaling) 校准置信度
+        t_env = os.getenv("Temperature", "1.0")
+        try:
+            T = float(t_env)
+        except ValueError:
+            T = 1.0
+
+        if T > 0 and T != 1.0:
+            # 限制概率在 [1e-7, 1 - 1e-7] 防止数学溢出
+            p_clipped = np.clip(prob, 1e-7, 1.0 - 1e-7)
+            # 计算 Logit (反 Sigmoid 变换)
+            z = np.log(p_clipped / (1.0 - p_clipped))
+            # 重新计算概率
+            prob = float(1.0 / (1.0 + np.exp(-z / T)))
+
         # 单样本：prob>0.5 => Positive，否则 Negative 且直接返回原始概率 prob
         if prob > 0.5:
             return {"label": "Positive", "probability": prob, "via": "onnx"}
